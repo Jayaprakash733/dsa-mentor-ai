@@ -1,0 +1,44 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: dsa_postgres
+    environment:
+      POSTGRES_USER: dsa_user
+      POSTGRES_PASSWORD: dsa_password
+      POSTGRES_DB: dsa_mentor
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dsa_user -d dsa_mentor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: dsa_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: dsa_chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chromadb_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  chromadb_data:

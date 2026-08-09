@@ -1,0 +1,7 @@
+Two Sum is a common DSA problem.
+
+Given an array of integers and a target value, find two numbers whose sum equals the target.
+
+For example, if nums = [2, 7, 11, 15] and target = 9, the answer is indices [0, 1].
+
+A hash map can be used to solve Two Sum efficiently in O(n) time.
