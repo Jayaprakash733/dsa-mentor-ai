@@ -1,10 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from app.database import get_db
-from app.models.problem import Problem
-from app.schemas.problem import ProblemCreate, ProblemResponse
+from fastapi import APIRouter, HTTPException
+from pathlib import Path
+import json
 
 
 router = APIRouter(
@@ -13,58 +9,78 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "",
-    response_model=ProblemResponse,
-    status_code=status.HTTP_201_CREATED,
+DATA_FILE = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "problems.json"
 )
-def create_problem(
-    data: ProblemCreate,
-    db: Session = Depends(get_db),
-):
-    problem = Problem(
-        title=data.title,
-        description=data.description,
-        difficulty=data.difficulty,
-        category=data.category,
-        topic=data.topic,
-    )
-
-    db.add(problem)
-    db.commit()
-    db.refresh(problem)
-
-    return problem
 
 
-@router.get(
-    "",
-    response_model=list[ProblemResponse],
-)
-def list_problems(
-    db: Session = Depends(get_db),
-):
-    problems = db.scalars(
-        select(Problem).order_by(Problem.id)
-    ).all()
-
-    return problems
-
-
-@router.get(
-    "/{problem_id}",
-    response_model=ProblemResponse,
-)
-def get_problem(
-    problem_id: int,
-    db: Session = Depends(get_db),
-):
-    problem = db.get(Problem, problem_id)
-
-    if not problem:
+def load_problems() -> list[dict]:
+    if not DATA_FILE.exists():
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Problem not found",
+            status_code=500,
+            detail="Problem dataset not found.",
         )
 
-    return problem
+    with DATA_FILE.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        return json.load(file)
+
+
+@router.get("")
+def get_problems(
+    topic: str | None = None,
+    difficulty: str | None = None,
+    limit: int = 50,
+):
+    problems = load_problems()
+
+    if topic:
+        problems = [
+            problem
+            for problem in problems
+            if topic.lower()
+            in [
+                str(t).lower()
+                for t in problem.get("topics", [])
+            ]
+        ]
+
+    if difficulty:
+        problems = [
+            problem
+            for problem in problems
+            if str(
+                problem.get("difficulty", "")
+            ).lower()
+            == difficulty.lower()
+        ]
+
+    return {
+        "total": len(problems),
+        "problems": problems[:limit],
+    }
+
+
+@router.get("/{problem_id}")
+def get_problem(problem_id: str):
+
+    problems = load_problems()
+
+    for problem in problems:
+
+        if (
+            problem.get("id")
+            == problem_id
+            or problem.get("problem_id")
+            == problem_id
+        ):
+            return problem
+
+    raise HTTPException(
+        status_code=404,
+        detail="Problem not found.",
+    )

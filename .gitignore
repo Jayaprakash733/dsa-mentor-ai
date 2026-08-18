@@ -20,3 +20,13 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+# Project generated files
+backend/uploads/
+
+# Temporary test files
+backend/test.c
+backend/test.cpp
+backend/Main.java
+
+# Backup files
+*.backup

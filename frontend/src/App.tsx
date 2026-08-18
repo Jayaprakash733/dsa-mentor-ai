@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react'
 import {
   BrowserRouter,
   Routes,
@@ -9,14 +15,11 @@ import {
 
 import { tutorService } from './services/tutorService'
 
+const DSA_MENTOR_LOGO = '/dsa-mentor-ai-logo.png'
+
 interface Message {
   role: 'student' | 'assistant'
   content: string
-}
-
-interface SelectedFile {
-  file: File
-  previewUrl?: string
 }
 
 interface ChatHistoryItem {
@@ -25,6 +28,57 @@ interface ChatHistoryItem {
   topic: string
   difficulty: string
   updated_at: number
+}
+
+interface ExecutionResult {
+  success: boolean
+  stdout: string
+  stderr: string
+  exit_code: number | null
+  timed_out: boolean
+}
+
+interface TestCaseResult {
+  passed: boolean
+  input: string
+  expected_output: string
+  actual_output: string
+  error: string
+  timed_out: boolean
+}
+
+interface TestSuiteResult {
+  passed: number
+  total: number
+  test_cases: TestCaseResult[]
+}
+
+interface Problem {
+  id: string
+  problem_id: string
+  frontend_id: string
+  title: string
+  difficulty: string
+  topics: string[]
+  description: string
+  constraints: string
+  follow_ups: string[]
+  hints: string[]
+  examples: {
+    example_num: number
+    text: string
+  }[]
+  test_cases?: {
+    input: string
+    expected_output: string
+  }[]
+  starter_code: string
+  solution: string
+}
+
+interface ProblemsResponse {
+  total: number
+  problems: Problem[]
 }
 
 const topics = [
@@ -49,13 +103,70 @@ const topics = [
   'Bit Manipulation',
 ]
 
-const difficulties = [
-  'Beginner',
-  'Easy',
-  'Medium',
-  'Hard',
-]
+const difficulties = ['Easy', 'Medium', 'Hard']
 
+const topicApiMap: Record<string, string> = {
+  Arrays: 'Array',
+  Strings: 'String',
+  Hashing: 'Hash Table',
+  'Two Pointers': 'Two Pointers',
+  'Sliding Window': 'Sliding Window',
+  'Linked List': 'Linked List',
+  Stack: 'Stack',
+  Queue: 'Queue',
+  'Binary Search': 'Binary Search',
+  Sorting: 'Sorting',
+  Recursion: 'Recursion',
+  Backtracking: 'Backtracking',
+  Trees: 'Tree',
+  BST: 'Binary Search Tree',
+  'Heap / Priority Queue': 'Heap',
+  Graphs: 'Graph',
+  Greedy: 'Greedy',
+  'Dynamic Programming': 'Dynamic Programming',
+  'Bit Manipulation': 'Bit Manipulation',
+}
+
+const codeTemplates: Record<string, string> = {
+  python: `nums = [2, 7, 11, 15]
+target = 9
+
+# Write your solution here
+`,
+  c: `#include <stdio.h>
+
+int main() {
+    int nums[] = {2, 7, 11, 15};
+    int target = 9;
+
+    // Write your solution here
+
+    return 0;
+}
+`,
+  cpp: `#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    vector<int> nums = {2, 7, 11, 15};
+    int target = 9;
+
+    // Write your solution here
+
+    return 0;
+}
+`,
+  java: `public class Main {
+    public static void main(String[] args) {
+        int[] nums = {2, 7, 11, 15};
+        int target = 9;
+
+        // Write your solution here
+    }
+}
+`,
+}
 
 /* =========================================================
    LOGIN
@@ -66,57 +177,47 @@ function LoginPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-abyss text-quartz">
-
       <div className="aurora-purple pointer-events-none absolute inset-x-0 top-0 h-[520px]" />
-
       <div className="plasma-pink pointer-events-none absolute inset-x-0 bottom-0 h-[300px]" />
 
       <div className="relative flex min-h-screen items-center justify-center px-6">
-
         <div className="w-full max-w-[480px]">
-
           <div className="mb-8 flex items-center justify-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-quartz text-xl font-bold text-void">
-              ◈
-            </div>
+            <img
+              src={DSA_MENTOR_LOGO}
+              alt="DSA Mentor AI"
+              className="h-11 w-11 rounded-full object-contain"
+            />
 
             <div>
               <h1 className="font-figtree text-xl font-semibold">
                 DSA Mentor AI
               </h1>
-
               <p className="text-sm text-ash">
                 Your personal DSA coding mentor
               </p>
             </div>
-
           </div>
 
-
           <div className="surface rounded-md p-8 shadow-xl-2">
-
             <div className="mb-8">
-
               <p className="mb-3 text-xs uppercase tracking-[0.18em] text-ash">
                 AI-powered learning
               </p>
 
               <h2 className="font-figtree text-4xl font-semibold leading-tight">
                 Master DSA
-
                 <span className="block text-ash">
                   one step at a time.
                 </span>
               </h2>
 
               <p className="mt-4 text-sm leading-6 text-ash">
-                Learn algorithms through guided conversations,
-                hints and interactive problem solving.
+                Practice real DSA problems with an AI mentor that gives
+                hints, explains mistakes and helps you reason before revealing
+                the solution.
               </p>
-
             </div>
-
 
             <button
               onClick={() => navigate('/dashboard')}
@@ -124,134 +225,443 @@ function LoginPage() {
             >
               Start Learning →
             </button>
-
           </div>
-
         </div>
-
       </div>
-
     </div>
   )
 }
 
+/* =========================================================
+   QUICK ACTION BUTTONS
+========================================================= */
+
+function QuickActionButton({
+  emoji,
+  label,
+  onClick,
+  disabled,
+}: {
+  emoji: string
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="group flex w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-left text-[11px] text-ash transition hover:border-[#5269aa]/30 hover:bg-[#5269aa]/10 hover:text-[#b9c9ff] disabled:opacity-50"
+    >
+      <span className="text-sm">{emoji}</span>
+      <span>{label}</span>
+    </button>
+  )
+}
 
 /* =========================================================
    DASHBOARD
 ========================================================= */
 
 function DashboardPage() {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [sessionId, setSessionId] = useState<string | undefined>()
+  const [loading, setLoading] = useState(false)
 
-  /* -------------------------------------------------------
-     CHAT
-  ------------------------------------------------------- */
+  const [code, setCode] = useState(codeTemplates.python)
+  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null)
+  const [executing, setExecuting] = useState(false)
+  const [language, setLanguage] = useState('python')
 
-  const [messages, setMessages] =
-    useState<Message[]>([])
+  const handleLanguageChange = (nextLanguage: string) => {
+    setLanguage(nextLanguage)
+    setExecutionResult(null)
+    setTestSuiteResult(null)
 
-  const [input, setInput] =
-    useState('')
+    // Do NOT replace the selected problem with the hardcoded
+    // Two Sum template when the language changes.
+    //
+    // The imported dataset currently exposes starter_code as the
+    // Python starter. Keep the selected problem's code for Python.
+    // For other languages, use an empty editor rather than showing
+    // unrelated code from another problem.
+    if (nextLanguage === 'python' && currentProblem?.starter_code?.trim()) {
+      setCode(currentProblem.starter_code)
+    } else if (nextLanguage !== 'python') {
+      setCode('')
+    } else {
+      setCode('')
+    }
+  }
 
-  const [sessionId, setSessionId] =
-    useState<string | undefined>()
+  const [difficulty, setDifficulty] = useState('Easy')
+  const [topic, setTopic] = useState('Arrays')
+  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [historyError, setHistoryError] = useState(false)
 
-  const [loading, setLoading] =
-    useState(false)
+  const [problems, setProblems] = useState<Problem[]>([])
+  const [allProblems, setAllProblems] = useState<Problem[]>([])
+  const [currentProblem, setCurrentProblem] = useState<Problem | null>(null)
+  const [problemsLoading, setProblemsLoading] = useState(false)
+  const [problemsError, setProblemsError] = useState(false)
+  const [testSuiteResult, setTestSuiteResult] = useState<TestSuiteResult | null>(null)
+
+  const [solvedProblems, setSolvedProblems] = useState<string[]>([])
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const problemTitle = currentProblem?.title || 'Select a problem'
+  const problemDescription =
+    currentProblem?.description ||
+    'Choose a problem from the sidebar to start practicing.'
+
+  const examples = currentProblem?.examples || []
+  const constraints = currentProblem?.constraints || ''
+
+  const problemTopics = currentProblem?.topics || []
+
+  const totalProblemCount = allProblems.length
+
+  const solvedCount = solvedProblems.length
+
+  // Keep small but real progress visible.
+  // Example: 1 / 2913 = 0.03%, not 0%.
+  const progressPercent =
+    totalProblemCount > 0
+      ? Number(
+          Math.min(
+            100,
+            (solvedCount / totalProblemCount) * 100
+          ).toFixed(2)
+        )
+      : 0
+
+  const progressBarPercent =
+    solvedCount > 0 && progressPercent > 0
+      ? Math.max(progressPercent, 1)
+      : 0
+
+  const getTopicProgress = (topicName: string) => {
+    const topicProblems = allProblems.filter((problem) =>
+      (problem.topics || []).some(
+        (problemTopic) =>
+          problemTopic.trim().toLowerCase() ===
+          topicName.trim().toLowerCase()
+      )
+    )
+
+    const solved = topicProblems.filter((problem) =>
+      solvedProblems.includes(problem.id)
+    ).length
+
+    return {
+      solved,
+      total: topicProblems.length,
+    }
+  }
+
+  const arraysProgress = getTopicProgress('Array')
+  const stringsProgress = getTopicProgress('String')
+  const hashingProgress = getTopicProgress('Hash Table')
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(
+        'dsa_solved_problems'
+      )
+
+      if (!saved) {
+        return
+      }
+
+      const parsed = JSON.parse(saved)
+
+      if (Array.isArray(parsed)) {
+        setSolvedProblems(
+          parsed.filter(
+            (value): value is string =>
+              typeof value === 'string'
+          )
+        )
+      }
+    } catch (error) {
+      console.error(
+        'Solved problems load error:',
+        error
+      )
+    }
+  }, [])
+
+  const buildMentorContext = () => {
+    const exampleText = examples.length
+      ? examples.map((example) => example.text).join('\n')
+      : 'No examples available.'
+
+    return `
+You are the AI mentor for the EXACT DSA problem currently selected by the student.
+
+Problem title:
+${problemTitle}
+
+Topic:
+${problemTopics.length ? problemTopics.join(', ') : topic}
+
+Difficulty:
+${currentProblem?.difficulty || difficulty}
+
+Problem statement:
+${problemDescription}
+
+Constraints:
+${constraints || 'No constraints available.'}
+
+Examples:
+${exampleText}
+
+Current student code:
+${code.trim() || 'No code written yet.'}
+
+Latest execution result:
+${
+  executionResult
+    ? `
+Success: ${executionResult.success}
+Output: ${executionResult.stdout || 'No output'}
+Error: ${executionResult.stderr || 'None'}
+Timed out: ${executionResult.timed_out}
+`
+    : 'The code has not been executed yet.'
+}
+
+${buildExecutionContext()}
+
+Important:
+- The student is already working on the problem above.
+- Do NOT ask which problem the student means.
+- Do NOT ask the student to provide the problem statement.
+- Use the supplied problem context directly.
+`
+  }
 
 
-  /* -------------------------------------------------------
-     DSA SETTINGS
-  ------------------------------------------------------- */
+  /* =======================================================
+     EXECUTION-AWARE MENTOR CONTEXT
+  ======================================================= */
 
-  const [difficulty, setDifficulty] =
-    useState('Beginner')
+  const buildExecutionContext = () => {
+    if (!testSuiteResult) {
+      return `
+Latest test-suite result:
+No test-suite execution has been performed yet.
+`
+    }
 
-  const [topic, setTopic] =
-    useState('Arrays')
+    const failedCases = testSuiteResult.test_cases
+      .map((testCase, index) => {
+        if (testCase.passed) return null
 
+        return `
+Case ${index + 1}:
+Input: ${testCase.input}
+Expected: ${testCase.expected_output}
+Actual: ${testCase.actual_output || 'No output'}
+Error: ${testCase.error || 'None'}
+Timed out: ${testCase.timed_out ? 'Yes' : 'No'}
+`
+      })
+      .filter(Boolean)
+      .join('\n')
 
-  /* -------------------------------------------------------
-     HISTORY
-  ------------------------------------------------------- */
+    return `
+Latest test-suite result:
+Passed: ${testSuiteResult.passed}/${testSuiteResult.total}
 
-  const [chatHistory, setChatHistory] =
-    useState<ChatHistoryItem[]>([])
+${
+  failedCases
+    ? `Failed test cases:
+${failedCases}`
+    : 'All available test cases passed.'
+}
+`
+  }
 
-  const [historyLoading, setHistoryLoading] =
-    useState(true)
+  /* =======================================================
+     LOAD PROBLEMS
+  ======================================================= */
 
-  const [historyError, setHistoryError] =
-    useState(false)
+  const loadProblems = async () => {
+    try {
+      setProblemsLoading(true)
+      setProblemsError(false)
 
+      // Fetch the complete dataset once for reliable frontend filtering.
+      // The backend already contains all 2913 imported problems.
+      const response = await fetch(
+        'http://127.0.0.1:8000/api/v1/problems?limit=2913'
+      )
 
-  /* -------------------------------------------------------
-     FILE
-  ------------------------------------------------------- */
+      if (!response.ok) {
+        throw new Error(`Failed to load problems: ${response.status}`)
+      }
 
-  const [selectedFile, setSelectedFile] =
-    useState<SelectedFile | null>(null)
+      const data = (await response.json()) as ProblemsResponse
 
-  const fileInputRef =
-    useRef<HTMLInputElement>(null)
+      setAllProblems(data.problems || [])
 
+      const apiTopic = topicApiMap[topic]
+
+      const normalizedTopic = (apiTopic || topic).trim().toLowerCase()
+      const normalizedDifficulty = difficulty.trim().toLowerCase()
+
+      const filteredProblems = (data.problems || []).filter((problem) => {
+        const topicMatch = (problem.topics || []).some(
+          (problemTopic) =>
+            problemTopic.trim().toLowerCase() === normalizedTopic
+        )
+
+        const difficultyMatch =
+          problem.difficulty.trim().toLowerCase() === normalizedDifficulty
+
+        return topicMatch && difficultyMatch
+      })
+
+      // Stable ordering: numeric LeetCode/frontend id first.
+      filteredProblems.sort((a, b) => {
+        const aId = Number(a.frontend_id || a.problem_id || 0)
+        const bId = Number(b.frontend_id || b.problem_id || 0)
+
+        if (!Number.isNaN(aId) && !Number.isNaN(bId)) {
+          return aId - bId
+        }
+
+        return a.title.localeCompare(b.title)
+      })
+
+      setProblems(filteredProblems)
+
+      if (filteredProblems.length === 0) {
+        setCurrentProblem(null)
+        return
+      }
+
+      const existing = currentProblem
+        ? filteredProblems.find(
+            (problem) => problem.id === currentProblem.id
+          )
+        : null
+
+      setCurrentProblem(existing || filteredProblems[0])
+    } catch (error) {
+      console.error('Problem loading error:', error)
+      setProblems([])
+      setCurrentProblem(null)
+      setProblemsError(true)
+    } finally {
+      setProblemsLoading(false)
+    }
+  }
+
+  const handleProblemSelect = async (problem: Problem) => {
+    try {
+      setExecutionResult(null)
+      setTestSuiteResult(null)
+
+      // Set the selected list item immediately.
+      // The synchronization effect below will clear/replace the editor.
+      setCurrentProblem(problem)
+
+      const response = await fetch(
+        `http://127.0.0.1:8000/api/v1/problems/${problem.id}`
+      )
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load problem: ${response.status}`
+        )
+      }
+
+      const fullProblem =
+        (await response.json()) as Problem
+
+      setCurrentProblem(fullProblem)
+    } catch (error) {
+      console.error(
+        'Problem selection error:',
+        error
+      )
+
+      // The list item already contains enough information
+      // to keep the selected problem usable.
+      setCurrentProblem(problem)
+    }
+  }
+
+  // Keep the editor synchronized with the selected problem.
+  // This is the source of truth: when the selected question changes,
+  // the old question's code can never remain in the editor.
+  useEffect(() => {
+    if (!currentProblem) {
+      setCode('')
+      return
+    }
+
+    setExecutionResult(null)
+    setTestSuiteResult(null)
+
+    if (language === 'python') {
+      setCode(currentProblem.starter_code?.trim() || '')
+    } else {
+      // The current imported schema exposes Python starter_code.
+      // Never show a hardcoded starter from another problem.
+      setCode('')
+    }
+  }, [currentProblem?.id, language])
+
+  useEffect(() => {
+    loadProblems()
+    // Topic/difficulty are the filters that control the problem list.
+  }, [topic, difficulty])
+
+  /* =======================================================
+     AUTO SCROLL
+  ======================================================= */
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
 
   /* =======================================================
      LOAD HISTORY
   ======================================================= */
 
   const loadHistory = async () => {
-
     try {
-
       setHistoryLoading(true)
       setHistoryError(false)
-
-      const history =
-        await tutorService.getHistory()
-
+      const history = await tutorService.getHistory()
       setChatHistory(history)
-
     } catch (error) {
-
-      console.error(
-        'History error:',
-        error
-      )
-
+      console.error('History error:', error)
       setHistoryError(true)
-
     } finally {
-
       setHistoryLoading(false)
-
     }
-
   }
 
-
-  /* =======================================================
-     LOAD HISTORY ON PAGE OPEN
-  ======================================================= */
-
   useEffect(() => {
-
     loadHistory()
-
   }, [])
-
 
   /* =======================================================
      SEND MESSAGE
   ======================================================= */
 
-  const sendMessage = async () => {
+  const sendMessage = async (customMessage?: string) => {
+    const message = (customMessage || input).trim()
 
-    const message = input.trim()
-
-    if (!message || loading) {
-      return
-    }
-
+    if (!message || loading) return
 
     setMessages((prev) => [
       ...prev,
@@ -261,28 +671,122 @@ function DashboardPage() {
       },
     ])
 
+    if (!customMessage) {
+      setInput('')
+    }
 
-    setInput('')
     setLoading(true)
 
+    try {
+      const response = await tutorService.chat({
+        message: `${buildMentorContext()}
+
+Student request:
+${message}
+
+Mentor instructions:
+- Answer specifically for the selected problem.
+- Use the student's current code when relevant.
+- If test cases failed, focus on the failed cases and explain the mismatch.
+- Give reasoning and guidance before code.
+- Do not reveal a complete solution unless the student explicitly asks for it.
+- Do not ask which problem the student is solving.`,
+        difficulty,
+        topic: problemTopics[0] || topic,
+        request_type: 'chat',
+        hint_level: 1,
+        session_id: sessionId,
+
+        problem_title: problemTitle,
+        problem_description: currentProblem?.description || '',
+        problem_constraints: currentProblem?.constraints || '',
+        problem_examples: examples.map((example) => example.text),
+        student_code: code,
+        execution_feedback: testSuiteResult
+          ? {
+              passed: testSuiteResult.passed,
+              total: testSuiteResult.total,
+              test_cases: testSuiteResult.test_cases,
+            }
+          : undefined,
+      })
+
+      setSessionId(response.session_id)
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: response.response,
+        },
+      ])
+
+      await loadHistory()
+    } catch (error) {
+      console.error('Chat error:', error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content:
+            'Sorry, something went wrong. Please check whether the backend server is running.',
+        },
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /* =======================================================
+     GET HINT
+  ======================================================= */
+
+  const handleHint = async () => {
+    if (loading) return
+
+    const hintMessage = `
+${buildMentorContext()}
+
+Task:
+Give ONE progressive hint for the selected problem.
+
+Hint rules:
+1. Do not give the complete solution.
+2. Do not provide complete code.
+3. Do not ask which problem the student is solving.
+4. Do not ask for the problem statement.
+5. Focus on the student's current code when code is present.
+6. Give a concrete thinking direction appropriate for the difficulty.
+7. Prefer an observation, data structure, invariant, or next step.
+8. Keep the hint concise and beginner-friendly.
+`
+
+    setLoading(true)
 
     try {
+      const response = await tutorService.getHint({
+        message: hintMessage,
+        difficulty,
+        topic: problemTopics[0] || topic,
+        hint_level: 1,
+        session_id: sessionId,
 
-      const response =
-        await tutorService.chat({
-          message,
-          difficulty,
-          topic,
-          request_type: 'chat',
-          hint_level: 1,
-          session_id: sessionId,
-        })
+        problem_title: problemTitle,
+        problem_description: currentProblem?.description || '',
+        problem_constraints: currentProblem?.constraints || '',
+        problem_examples: examples.map((example) => example.text),
+        student_code: code,
+        execution_feedback: testSuiteResult
+          ? {
+              passed: testSuiteResult.passed,
+              total: testSuiteResult.total,
+              test_cases: testSuiteResult.test_cases,
+            }
+          : undefined,
+      })
 
-
-      setSessionId(
-        response.session_id
-      )
-
+      if (response.session_id) {
+        setSessionId(response.session_id)
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -292,1145 +796,1177 @@ function DashboardPage() {
         },
       ])
 
-
-      /* Refresh sidebar */
       await loadHistory()
-
     } catch (error) {
+      console.error('Hint error:', error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sorry, I could not generate a hint. Please try again.',
+        },
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
 
+
+  /* =======================================================
+     RUN CODE + TEST SUITE
+  ======================================================= */
+
+  const buildTestCases = () => {
+    if (currentProblem?.test_cases?.length) {
+      return currentProblem.test_cases
+    }
+
+    return examples
+      .map((example) => {
+        const text = example.text || ''
+        const inputIndex = text.indexOf('Input:')
+        const outputIndex = text.indexOf('Output:')
+
+        if (inputIndex < 0 || outputIndex <= inputIndex) {
+          return null
+        }
+
+        const input = text
+          .slice(inputIndex + 'Input:'.length, outputIndex)
+          .trim()
+
+        const outputText = text
+          .slice(outputIndex + 'Output:'.length)
+          .trim()
+
+        const explanationIndex = outputText.indexOf('Explanation:')
+
+        const expectedOutput =
+          explanationIndex >= 0
+            ? outputText.slice(0, explanationIndex).trim()
+            : outputText.split('\n')[0].trim()
+
+        if (!input || !expectedOutput) {
+          return null
+        }
+
+        return {
+          input,
+          expected_output: expectedOutput,
+        }
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          input: string
+          expected_output: string
+        } => item !== null
+      )
+  }
+
+  const getFunctionName = () => {
+    if (language.toLowerCase() !== 'python') {
+      return null
+    }
+
+    if (!/class\s+Solution\s*[:(]/.test(code)) {
+      return null
+    }
+
+    const match = code.match(
+      /(?:^|\n)\s*def\s+([A-Za-z_]\w*)\s*\(/
+    )
+
+    return match?.[1] || null
+  }
+
+  const runCode = async () => {
+    if (!code.trim() || executing) {
+      return
+    }
+
+    setExecuting(true)
+    setExecutionResult(null)
+    setTestSuiteResult(null)
+
+    try {
+      const testCases = buildTestCases()
+
+      // ==================================================
+      // PROBLEM WITH STRUCTURED TEST CASES
+      // Run directly through /execute/tests so stdin is
+      // actually supplied to the program.
+      // ==================================================
+
+      if (testCases.length > 0) {
+        const testResponse = await fetch(
+          'http://127.0.0.1:8000/api/v1/execute/tests',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              code,
+              language,
+              function_name: getFunctionName(),
+              test_cases: testCases,
+            }),
+          }
+        )
+
+        if (!testResponse.ok) {
+          throw new Error(
+            `Test execution failed: ${testResponse.status}`
+          )
+        }
+
+        const testResult =
+          (await testResponse.json()) as TestSuiteResult
+
+        setTestSuiteResult(testResult)
+
+        // Mark the problem solved only when every available
+        // test case passes. Failed/partial runs never count.
+        if (
+          currentProblem &&
+          testResult.total > 0 &&
+          testResult.passed === testResult.total
+        ) {
+          setSolvedProblems((previous) => {
+            if (previous.includes(currentProblem.id)) {
+              return previous
+            }
+
+            const updated = [
+              ...previous,
+              currentProblem.id,
+            ]
+
+            try {
+              localStorage.setItem(
+                'dsa_solved_problems',
+                JSON.stringify(updated)
+              )
+            } catch (error) {
+              console.error(
+                'Solved problems save error:',
+                error
+              )
+            }
+
+            return updated
+          })
+        }
+
+        // Use the first test case to populate the main
+        // execution result panel.
+        const firstCase = testResult.test_cases[0]
+
+        if (firstCase) {
+          setExecutionResult({
+            success:
+              firstCase.passed &&
+              !firstCase.timed_out,
+            stdout:
+              firstCase.actual_output || '',
+            stderr:
+              firstCase.error || '',
+            exit_code:
+              firstCase.passed ? 0 : 1,
+            timed_out:
+              firstCase.timed_out,
+          })
+        }
+
+        return
+      }
+
+      // ==================================================
+      // FALLBACK: SIMPLE EXECUTION
+      // Used for problems without structured test cases.
+      // ==================================================
+
+      const response = await fetch(
+        'http://127.0.0.1:8000/api/v1/execute',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            code,
+            language,
+          }),
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(
+          `Execution failed: ${response.status}`
+        )
+      }
+
+      const result =
+        (await response.json()) as ExecutionResult
+
+      setExecutionResult(result)
+    } catch (error) {
       console.error(
-        'Chat error:',
+        'Code execution error:',
         error
       )
 
+      setExecutionResult({
+        success: false,
+        stdout: '',
+        stderr:
+          'Unable to connect to the code execution service.',
+        exit_code: null,
+        timed_out: false,
+      })
+
+      setTestSuiteResult(null)
+    } finally {
+      setExecuting(false)
+    }
+  }
+
+  /* =======================================================
+     ASK MENTOR ABOUT CODE
+  ======================================================= */
+
+  const askMentorAboutCode = async () => {
+    if (!code.trim() || !executionResult || executing || loading) return
+
+    setLoading(true)
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/v1/execute/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          language,
+          problem: `${problemTitle}: ${problemDescription}`,
+          topic: problemTopics[0] || topic,
+          difficulty: currentProblem?.difficulty || difficulty,
+          success: executionResult.success,
+          stdout: executionResult.stdout,
+          stderr: executionResult.stderr,
+          timed_out: executionResult.timed_out,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Mentor feedback failed: ${response.status}`)
+      }
+
+      const result = await response.json()
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content:
-            'Sorry, something went wrong. Please check whether the backend server is running.',
+          content: result.feedback || 'No mentor feedback was returned.',
         },
       ])
-
-    } finally {
-
-      setLoading(false)
-
-    }
-
-  }
-
-
-  /* =======================================================
-     LOAD A CONVERSATION
-  ======================================================= */
-
-  const loadConversation = async (
-    item: ChatHistoryItem
-  ) => {
-
-    if (loading) {
-      return
-    }
-
-    try {
-
-      setLoading(true)
-
-      const conversation =
-        await tutorService.getConversation(
-          item.session_id
-        )
-
-
-      setMessages(
-        conversation.messages
-      )
-
-      setSessionId(
-        conversation.session_id
-      )
-
-      setTopic(
-        item.topic
-      )
-
-      setDifficulty(
-        item.difficulty
-      )
-
-      setInput('')
-
     } catch (error) {
-
-      console.error(
-        'Conversation load error:',
-        error
-      )
-
+      console.error('Mentor feedback error:', error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'I could not analyze the execution right now. Please make sure the backend is running.',
+        },
+      ])
     } finally {
-
       setLoading(false)
-
     }
-
   }
 
-
   /* =======================================================
-     NEW CHAT
+     RESET CONVERSATION
   ======================================================= */
 
   const resetConversation = () => {
-
     setMessages([])
-
     setSessionId(undefined)
-
     setInput('')
-
-    setTopic('Arrays')
-
-    setDifficulty('Beginner')
-
-    removeFile()
-
+    setLanguage('python')
+    setCurrentProblem(null)
+    setCode('')
+    setExecutionResult(null)
+    setTestSuiteResult(null)
   }
 
-
   /* =======================================================
-     DELETE CHAT
+     LOAD CONVERSATION
   ======================================================= */
 
-  const deleteConversation = async (
-    event: React.MouseEvent,
-    id: string
-  ) => {
+  const loadConversation = async (item: ChatHistoryItem) => {
+    if (loading) return
 
+    try {
+      setLoading(true)
+      const conversation = await tutorService.getConversation(item.session_id)
+      setMessages(conversation.messages)
+      setSessionId(conversation.session_id)
+      setTopic(item.topic)
+      setDifficulty(item.difficulty)
+      setInput('')
+    } catch (error) {
+      console.error('Conversation load error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /* =======================================================
+     DELETE CONVERSATION
+  ======================================================= */
+
+  const deleteConversation = async (event: MouseEvent, id: string) => {
     event.stopPropagation()
 
     try {
-
-      await tutorService.deleteConversation(
-        id
-      )
-
-
+      await tutorService.deleteConversation(id)
       if (sessionId === id) {
-
         resetConversation()
-
       }
-
-
       await loadHistory()
-
     } catch (error) {
-
-      console.error(
-        'Delete conversation error:',
-        error
-      )
-
+      console.error('Delete conversation error:', error)
     }
-
   }
-
-
-  /* =======================================================
-     ENTER
-  ======================================================= */
-
-  const handleKeyDown = (
-    event: React.KeyboardEvent<HTMLTextAreaElement>
-  ) => {
-
-    if (
-      event.key === 'Enter' &&
-      !event.shiftKey
-    ) {
-
-      event.preventDefault()
-
-      sendMessage()
-
-    }
-
-  }
-
-
-  /* =======================================================
-     FILE SELECT
-  ======================================================= */
-
-  const handleFileSelect = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-
-    const file =
-      event.target.files?.[0]
-
-    if (!file) {
-      return
-    }
-
-
-    const allowedTypes = [
-      'application/pdf',
-      'image/png',
-      'image/jpeg',
-      'image/webp',
-    ]
-
-
-    if (
-      !allowedTypes.includes(
-        file.type
-      )
-    ) {
-
-      alert(
-        'Only PDF, PNG, JPG and WEBP files are allowed.'
-      )
-
-      event.target.value = ''
-
-      return
-
-    }
-
-
-    let previewUrl:
-      | string
-      | undefined
-
-
-    if (
-      file.type.startsWith(
-        'image/'
-      )
-    ) {
-
-      previewUrl =
-        URL.createObjectURL(file)
-
-    }
-
-
-    setSelectedFile({
-      file,
-      previewUrl,
-    })
-
-  }
-
-
-  /* =======================================================
-     REMOVE FILE
-  ======================================================= */
-
-  const removeFile = () => {
-
-    if (
-      selectedFile?.previewUrl
-    ) {
-
-      URL.revokeObjectURL(
-        selectedFile.previewUrl
-      )
-
-    }
-
-
-    setSelectedFile(null)
-
-
-    if (fileInputRef.current) {
-
-      fileInputRef.current.value =
-        ''
-
-    }
-
-  }
-
 
   /* =======================================================
      FORMAT DATE
   ======================================================= */
 
-  const formatChatDate = (
-    timestamp: number
-  ) => {
+  const formatChatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000)
+    const now = new Date()
 
-    const date =
-      new Date(
-        timestamp * 1000
-      )
-
-    const now =
-      new Date()
-
-    const isToday =
-      date.toDateString() ===
-      now.toDateString()
-
-
-    if (isToday) {
-
-      return date.toLocaleTimeString(
-        [],
-        {
-          hour: '2-digit',
-          minute: '2-digit',
-        }
-      )
-
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
     }
 
-
-    return date.toLocaleDateString(
-      [],
-      {
-        day: '2-digit',
-        month: 'short',
-      }
-    )
-
+    return date.toLocaleDateString([], {
+      day: '2-digit',
+      month: 'short',
+    })
   }
 
+  /* =======================================================
+     HANDLE KEYBOARD
+  ======================================================= */
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      sendMessage()
+    }
+  }
 
   /* =======================================================
-     UI
+     UI RENDER
   ======================================================= */
 
   return (
-
-    <div className="min-h-screen bg-abyss text-quartz">
-
-
-      {/* ===================================================
-          HEADER
-      =================================================== */}
-
-      <header className="sticky top-0 z-30 border-b border-inkline bg-abyss/95 backdrop-blur-xl">
-
-        <div className="mx-auto flex h-16 max-w-container items-center justify-between px-5 lg:px-8">
-
-
+    <div className="min-h-screen bg-[#080b13] text-quartz">
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#080b13]/95 backdrop-blur-xl">
+        <div className="flex h-14 items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">
-
-            <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-quartz text-sm font-bold text-void">
-              ◈
-            </div>
-
+            <img
+              src={DSA_MENTOR_LOGO}
+              alt="DSA Mentor AI"
+              className="h-8 w-8 rounded-full object-contain"
+            />
             <div>
-
-              <h1 className="font-figtree text-sm font-semibold">
-                DSA Mentor AI
-              </h1>
-
-              <p className="text-[11px] text-ash">
-                Learn · Practice · Master
-              </p>
-
+              <p className="text-sm font-semibold">DSA Mentor AI</p>
+              <p className="hidden text-[10px] text-ash sm:block">Practice · Understand · Master</p>
             </div>
-
           </div>
 
-
           <div className="flex items-center gap-2">
-
-            <div className="hidden items-center gap-2 rounded-full border border-inkline bg-deep-sea px-3 py-1.5 md:flex">
-
+            <div className="hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 sm:flex">
               <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-
-              <span className="text-xs text-ash">
-                AI Online
-              </span>
-
+              <span className="text-[11px] text-ash">AI Online</span>
             </div>
-
 
             <select
               value={difficulty}
-              onChange={(event) =>
-                setDifficulty(
-                  event.target.value
-                )
-              }
-              className="rounded-full border border-inkline bg-deep-sea px-3 py-1.5 text-xs text-mist outline-none"
+              onChange={(event) => setDifficulty(event.target.value)}
+              className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-mist outline-none"
             >
-
-              {difficulties.map(
-                (level) => (
-
-                  <option
-                    key={level}
-                    value={level}
-                  >
-                    {level}
-                  </option>
-
-                )
-              )}
-
+              {difficulties.map((level) => (
+                <option key={level} value={level} className="bg-[#0b1020]">
+                  {level}
+                </option>
+              ))}
             </select>
-
           </div>
-
         </div>
-
       </header>
 
-
-      {/* ===================================================
-          LAYOUT
-      =================================================== */}
-
-      <div className="mx-auto flex min-h-[calc(100vh-64px)] max-w-[1440px]">
-
-
-        {/* =================================================
-            SIDEBAR
-        ================================================= */}
-
-        <aside className="hidden w-[280px] shrink-0 border-r border-inkline lg:flex lg:flex-col">
-
-
-          {/* -----------------------------------------------
-              NEW CHAT
-          ----------------------------------------------- */}
-
-          <div className="border-b border-inkline p-4">
-
+      {/* MAIN LAYOUT */}
+      <div className="flex min-h-[calc(100vh-56px)]">
+        {/* LEFT SIDEBAR */}
+        <aside className="hidden w-[240px] shrink-0 border-r border-white/[0.06] bg-[#090d16] xl:flex xl:flex-col">
+          <div className="border-b border-white/[0.06] p-3">
             <button
-              onClick={
-                resetConversation
-              }
-              className="flex w-full items-center justify-center gap-2 rounded-md bg-quartz px-4 py-2.5 text-sm font-semibold text-void transition hover:opacity-90"
+              onClick={resetConversation}
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-white px-3 py-2 text-xs font-semibold text-[#080b13] transition hover:bg-white/90"
             >
-
-              <span className="text-base">
-                ＋
-              </span>
-
+              <span>＋</span>
               New Chat
-
             </button>
-
           </div>
 
-
-          {/* -----------------------------------------------
-              SCROLLABLE SIDEBAR
-          ----------------------------------------------- */}
-
-          <div className="flex-1 overflow-y-auto p-4">
-
-
-            {/* =============================================
-                RECENT CHATS
-            ============================================= */}
-
-            <div className="mb-7">
-
-              <div className="mb-3 flex items-center justify-between px-2">
-
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ash">
-                  Recent Chats
-                </p>
-
+          <div className="flex-1 overflow-y-auto p-3">
+            {/* RECENT */}
+            <div className="mb-6">
+              <div className="mb-2 flex items-center justify-between px-2">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-ash">Recent</p>
                 {chatHistory.length > 0 && (
-
-                  <span className="text-[10px] text-ash/50">
-                    {chatHistory.length}
-                  </span>
-
+                  <span className="text-[9px] text-ash/50">{chatHistory.length}</span>
                 )}
-
               </div>
-
-
-              {/* History list */}
 
               {historyLoading ? (
-
-                <div className="rounded-md border border-dashed border-inkline px-3 py-5 text-center">
-
-                  <div className="mx-auto mb-2 h-4 w-4 animate-spin rounded-full border-2 border-ash/20 border-t-ash" />
-
+                <div className="px-2 py-4 text-[10px] text-ash">Loading...</div>
+              ) : historyError || chatHistory.length === 0 ? (
+                <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-3">
                   <p className="text-[10px] text-ash">
-                    Loading history...
+                    {historyError ? 'Recent chats are unavailable right now.' : 'No recent chats yet.'}
                   </p>
-
-                </div>
-
-              ) : historyError ? (
-
-                <div className="rounded-md border border-dashed border-red-500/20 px-3 py-5 text-center">
-
-                  <p className="text-xs text-red-400">
-                    Unable to load history
-                  </p>
-
-                  <button
-                    onClick={
-                      loadHistory
-                    }
-                    className="mt-2 text-[10px] text-ash underline hover:text-quartz"
-                  >
-                    Try again
-                  </button>
-
-                </div>
-
-              ) : chatHistory.length === 0 ? (
-
-                <div className="rounded-md border border-dashed border-inkline px-3 py-5 text-center">
-
-                  <div className="mb-2 text-lg text-ash/60">
-                    ◌
-                  </div>
-
-                  <p className="text-xs text-ash">
-                    No conversations yet
-                  </p>
-
-                  <p className="mt-1 text-[10px] leading-4 text-ash/50">
-                    Your recent chats will appear here.
-                  </p>
-
-                </div>
-
-              ) : (
-
-                <div className="max-h-[300px] space-y-1 overflow-y-auto pr-1">
-
-                  {chatHistory.map(
-                    (item) => (
-
-                      <div
-                        key={
-                          item.session_id
-                        }
-                        onClick={() =>
-                          loadConversation(
-                            item
-                          )
-                        }
-                        className={`group cursor-pointer rounded-md px-3 py-2.5 transition ${
-                          sessionId ===
-                          item.session_id
-                            ? 'bg-cobalt-panel'
-                            : 'hover:bg-deep-sea'
-                        }`}
-                      >
-
-                        <div className="flex items-start gap-2">
-
-                          <span
-                            className={`mt-1 text-[8px] ${
-                              sessionId ===
-                              item.session_id
-                                ? 'text-frosted-lilac'
-                                : 'text-ash/50'
-                            }`}
-                          >
-                            ●
-                          </span>
-
-
-                          <div className="min-w-0 flex-1">
-
-                            <p
-                              className={`truncate text-xs ${
-                                sessionId ===
-                                item.session_id
-                                  ? 'text-quartz'
-                                  : 'text-mist'
-                              }`}
-                            >
-                              {item.title}
-                            </p>
-
-
-                            <div className="mt-1 flex items-center gap-2">
-
-                              <span className="truncate text-[9px] text-ash/60">
-                                {item.topic}
-                              </span>
-
-                              <span className="text-[9px] text-ash/40">
-                                ·
-                              </span>
-
-                              <span className="shrink-0 text-[9px] text-ash/60">
-                                {formatChatDate(
-                                  item.updated_at
-                                )}
-                              </span>
-
-                            </div>
-
-                          </div>
-
-
-                          {/* Delete */}
-
-                          <button
-                            onClick={(
-                              event
-                            ) =>
-                              deleteConversation(
-                                event,
-                                item.session_id
-                              )
-                            }
-                            className="hidden shrink-0 text-xs text-ash/40 hover:text-red-400 group-hover:block"
-                            title="Delete conversation"
-                          >
-                            ×
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    )
-                  )}
-
-                </div>
-
-              )}
-
-            </div>
-
-
-            {/* =============================================
-                DSA TOPICS
-            ============================================= */}
-
-            <div>
-
-              <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-ash">
-                DSA Topics
-              </p>
-
-
-              <div className="space-y-1">
-
-                {topics.map(
-                  (item) => (
-
+                  {historyError && (
                     <button
-                      key={item}
-                      onClick={() =>
-                        setTopic(item)
-                      }
-                      className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
-                        topic === item
-                          ? 'bg-cobalt-panel text-frosted-lilac'
-                          : 'text-ash hover:bg-deep-sea hover:text-quartz'
+                      onClick={loadHistory}
+                      className="mt-2 text-[10px] text-[#9fb2ff] underline underline-offset-2"
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {chatHistory.slice(0, 8).map((item) => (
+                    <div
+                      key={item.session_id}
+                      onClick={() => loadConversation(item)}
+                      className={`group cursor-pointer rounded-md px-2.5 py-2 transition ${
+                        sessionId === item.session_id
+                          ? 'bg-[#182b60]'
+                          : 'hover:bg-white/[0.04]'
                       }`}
                     >
-
-                      <span className="mr-3 text-[9px]">
-
-                        {topic === item
-                          ? '●'
-                          : '○'}
-
-                      </span>
-
-                      {item}
-
-                    </button>
-
-                  )
-                )}
-
-              </div>
-
+                      <div className="flex items-start gap-2">
+                        <span className="mt-1 text-[7px] text-ash/60">●</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[11px] text-mist">{item.title}</p>
+                          <p className="mt-0.5 truncate text-[9px] text-ash/50">
+                            {item.topic} · {formatChatDate(item.updated_at)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(event) => deleteConversation(event, item.session_id)}
+                          className="hidden text-xs text-ash/30 hover:text-red-400 group-hover:block"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {/* TOPICS */}
+            <div>
+              <p className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-ash">
+                Topics
+              </p>
+              <div className="space-y-0.5">
+                {topics.map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => setTopic(item)}
+                    className={`w-full rounded-md px-2.5 py-1.5 text-left text-[11px] transition ${
+                      topic === item
+                        ? 'bg-[#182b60] text-[#b9c9ff]'
+                        : 'text-ash hover:bg-white/[0.04] hover:text-quartz'
+                    }`}
+                  >
+                    <span className="mr-2 text-[7px]">{topic === item ? '●' : '○'}</span>
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
+          {/* QUESTIONS */}
+          <div className="border-t border-white/[0.06] px-3 py-4">
+            <div className="mb-2 flex items-center justify-between px-2">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-ash">
+                Questions
+              </p>
+              <span className="text-[9px] text-ash/50">
+                {problems.length}
+              </span>
+            </div>
 
-          {/* -----------------------------------------------
-              PROGRESS
-          ----------------------------------------------- */}
+            {problemsLoading ? (
+              <div className="px-2 py-4 text-[10px] text-ash">
+                Loading questions...
+              </div>
+            ) : problemsError ? (
+              <div className="rounded-md border border-red-400/10 bg-red-400/[0.03] px-3 py-3">
+                <p className="text-[10px] text-red-300">
+                  Unable to load questions.
+                </p>
+                <button
+                  type="button"
+                  onClick={loadProblems}
+                  className="mt-2 text-[10px] text-[#9fb2ff] underline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : problems.length === 0 ? (
+              <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+                <p className="text-[10px] text-ash">
+                  No questions found for this topic and difficulty.
+                </p>
+              </div>
+            ) : (
+              <div className="max-h-[300px] space-y-1 overflow-y-auto pr-1">
+                {problems.map((problem) => (
+                  <button
+                    key={problem.id}
+                    type="button"
+                    onClick={() => handleProblemSelect(problem)}
+                    className={`w-full rounded-md px-2.5 py-2 text-left transition ${
+                      currentProblem?.id === problem.id
+                        ? 'bg-[#182b60] text-[#b9c9ff]'
+                        : 'text-ash hover:bg-white/[0.04] hover:text-quartz'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[7px]">
+                        {currentProblem?.id === problem.id ? '●' : '○'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[10px]">
+                          {problem.frontend_id}. {problem.title}
+                        </p>
+                        <p className="mt-0.5 text-[8px] text-ash/50">
+                          {problem.difficulty}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-          <div className="border-t border-inkline p-4">
-
+          {/* PROGRESS */}
+          <div className="border-t border-white/[0.06] p-3">
             <div className="mb-2 flex items-center justify-between">
-
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ash">
-                Progress
+              <p className="text-[9px] uppercase tracking-[0.16em] text-ash">
+                Your Progress
               </p>
 
-              <span className="text-xs text-ash">
-                35%
+              <span className="text-[10px] font-semibold text-[#9fb2ff]">
+                {progressPercent}%
               </span>
-
             </div>
 
-
-            <div className="h-1.5 overflow-hidden rounded-full bg-inkline">
-
-              <div className="h-full w-[35%] rounded-full bg-signal-blue" />
-
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+              <div
+                className="h-full rounded-full bg-[#5277ff] transition-all duration-300"
+                style={{
+                  width: `${progressBarPercent}%`,
+                }}
+              />
             </div>
 
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              <div className="rounded-md border border-white/[0.05] bg-white/[0.02] px-2 py-1.5">
+                <p className="text-[9px] text-ash">Arrays</p>
+                <p className="mt-0.5 text-[10px] text-mist">
+                  {arraysProgress.solved} / {arraysProgress.total}
+                </p>
+              </div>
+
+              <div className="rounded-md border border-white/[0.05] bg-white/[0.02] px-2 py-1.5">
+                <p className="text-[9px] text-ash">Strings</p>
+                <p className="mt-0.5 text-[10px] text-mist">
+                  {stringsProgress.solved} / {stringsProgress.total}
+                </p>
+              </div>
+
+              <div className="rounded-md border border-white/[0.05] bg-white/[0.02] px-2 py-1.5">
+                <p className="text-[9px] text-ash">Hashing</p>
+                <p className="mt-0.5 text-[10px] text-mist">
+                  {hashingProgress.solved} / {hashingProgress.total}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-2 text-[8px] text-ash/50">
+              {solvedCount} of {totalProblemCount} problems solved
+            </p>
           </div>
-
         </aside>
 
-
-        {/* =================================================
-            MAIN
-        ================================================= */}
-
-        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-
-
-          {/* Aurora */}
-
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-[280px] opacity-50">
-
-            <div className="aurora-purple h-full w-full" />
-
-          </div>
-
-
-          {/* =================================================
-              PROBLEM HEADER
-          ================================================= */}
-
-          <div className="relative border-b border-inkline px-5 py-5 lg:px-8">
-
-            <div className="mx-auto flex max-w-5xl items-center justify-between">
-
-              <div>
-
-                <div className="flex flex-wrap items-center gap-3">
-
-                  <h2 className="font-figtree text-xl font-semibold">
-                    {topic}
-                  </h2>
-
-                  <span className="rounded-full border border-sapphire-hairline bg-cobalt-panel px-2.5 py-1 text-[10px] uppercase tracking-wide text-frosted-lilac">
-                    {difficulty}
+        {/* CENTER + RIGHT LAYOUT */}
+        <main className="min-w-0 flex-1">
+          <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px]">
+            {/* CENTER: PROBLEM + CODE EDITOR */}
+            <section className="min-w-0 overflow-y-auto border-r border-white/[0.06] bg-[#080c14]">
+              <div className="mx-auto max-w-[1000px] px-4 py-6 lg:px-8">
+                {/* MOBILE CONTROLS */}
+                <div className="mb-4 flex items-center justify-between xl:hidden">
+                  <button
+                    type="button"
+                    onClick={resetConversation}
+                    className="rounded-md border border-white/[0.07] bg-white/[0.02] px-2.5 py-1.5 text-[10px] text-ash"
+                  >
+                    + New Chat
+                  </button>
+                  <span className="text-[9px] text-ash/60">
+                    {topic} · {difficulty}
                   </span>
-
                 </div>
 
-                <p className="mt-1 text-xs text-ash">
-                  Interactive DSA learning session
-                </p>
-
-              </div>
-
-
-              <div className="hidden items-center gap-1 sm:flex">
-
-                <span className="h-1 w-8 rounded-full bg-signal-blue" />
-
-                <span className="h-1 w-8 rounded-full bg-inkline" />
-
-                <span className="h-1 w-8 rounded-full bg-inkline" />
-
-                <span className="h-1 w-8 rounded-full bg-inkline" />
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* =================================================
-              CHAT
-          ================================================= */}
-
-          <div className="relative flex-1 overflow-y-auto">
-
-            <div className="mx-auto max-w-5xl px-5 py-8 lg:px-10">
-
-
-              {messages.length === 0 ? (
-
-                <div className="flex min-h-[500px] items-center justify-center">
-
-                  <div className="max-w-xl text-center">
-
-                    <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-md border border-inkline bg-deep-sea text-xl">
-                      ◈
-                    </div>
-
-                    <p className="mb-3 text-xs uppercase tracking-[0.18em] text-ash">
-                      Your AI coding mentor
-                    </p>
-
-                    <h2 className="font-figtree text-3xl font-semibold">
-                      Ready to solve DSA?
-                    </h2>
-
-                    <p className="mt-4 text-sm leading-6 text-ash">
-                      Ask a question or upload a problem.
-                      I'll guide you through the reasoning
-                      instead of immediately giving away the solution.
-                    </p>
-
-
-                    <div className="mt-6 flex flex-wrap justify-center gap-2">
-
-                      {[
-                        'How do I solve Two Sum?',
-                        'Explain Binary Search',
-                        'What is a Hash Map?',
-                      ].map(
-                        (suggestion) => (
-
-                          <button
-                            key={suggestion}
-                            onClick={() =>
-                              setInput(
-                                suggestion
-                              )
-                            }
-                            className="rounded-full border border-inkline bg-deep-sea px-4 py-2 text-xs text-ash transition hover:border-sapphire-hairline hover:text-quartz"
-                          >
-                            {suggestion}
-                          </button>
-
-                        )
-                      )}
-
-                    </div>
-
+                {/* PROBLEM TOOLBAR */}
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] uppercase tracking-[0.16em] text-ash/60">
+                      Practice workspace
+                    </span>
+                    <span className="h-1 w-1 rounded-full bg-white/20" />
+                    <span className="text-[9px] text-ash/50">
+                      Guided by AI Mentor
+                    </span>
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={handleHint}
+                    disabled={loading}
+                    className="rounded-md border border-[#5269aa]/25 bg-[#5269aa]/10 px-3 py-1.5 text-[10px] font-semibold text-[#b9c9ff] transition hover:bg-[#5269aa]/20 disabled:opacity-50"
+                  >
+                    💡 Hint
+                  </button>
                 </div>
 
-              ) : (
-
-                <div className="space-y-7">
-
-                  {messages.map(
-                    (
-                      message,
-                      index
-                    ) => (
-
-                      <div
-                        key={index}
-                        className={`chat-message flex gap-3 ${
-                          message.role ===
-                          'student'
-                            ? 'justify-end'
-                            : 'justify-start'
-                        }`}
+                {/* PROBLEM HEADER */}
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="rounded-full bg-green-400/10 px-2 py-0.5 text-[9px] font-medium text-green-400">
+                      {currentProblem?.difficulty || difficulty}
+                    </span>
+                    {problemTopics.slice(0, 2).map((problemTopic) => (
+                      <span
+                        key={problemTopic}
+                        className="rounded-full bg-blue-400/10 px-2 py-0.5 text-[9px] font-medium text-blue-400"
                       >
+                        {problemTopic}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <h1 className="text-[30px] font-semibold tracking-[-0.02em]">{problemTitle}</h1>
+                      <p className="mt-1 text-[11px] text-ash">
+                        {problemTopics.length > 0
+                          ? problemTopics.join(' · ')
+                          : 'Choose a problem'} · {currentProblem?.difficulty || difficulty}
+                      </p>
+                    </div>
 
-                        {message.role ===
-                          'assistant' && (
+                    <div className="flex items-center gap-2 text-[9px] text-ash/60">
+                      <span className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1">
+                        Beginner friendly
+                      </span>
+                      <span className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1">
+                        Guided practice
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-sapphire-hairline bg-cobalt-panel text-sm text-frosted-lilac">
-                            ◈
+                {/* PROBLEM CARD */}
+                <div className="mb-6 rounded-lg border border-white/[0.07] bg-[#0c1220]">
+                  <div className="border-b border-white/[0.06] px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ash">
+                      Problem Statement
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 px-4 py-4">
+                    {!currentProblem && (
+                      <div className="rounded-md border border-[#5269aa]/20 bg-[#5269aa]/[0.05] px-3 py-3 text-[10px] text-[#b9c9ff]">
+                        Select a question from the left sidebar to begin.
+                      </div>
+                    )}
+                    <div>
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ash/70">
+                        Understand
+                      </p>
+                      <p className="text-sm leading-6 text-mist">{problemDescription}</p>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-semibold text-ash">Examples</p>
+                      <div className="space-y-2">
+                        {examples.length > 0 ? (
+                          examples.map((example) => (
+                            <div
+                              key={example.example_num}
+                              className="rounded-md bg-[#080c14] px-3 py-2 font-mono text-[10px] leading-5"
+                            >
+                              <p className="mb-1 text-[9px] text-ash/60">
+                                Example {example.example_num}
+                              </p>
+                              <pre className="whitespace-pre-wrap text-mist">
+                                {example.text}
+                              </pre>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-[10px] text-ash">
+                            No examples available for this problem.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 text-[9px] text-ash">
+                      {problemTopics.map((problemTopic) => (
+                        <span
+                          key={problemTopic}
+                          className="rounded border border-white/[0.07] px-2 py-1"
+                        >
+                          {problemTopic}
+                        </span>
+                      ))}
+                    </div>
+
+                    {currentProblem?.constraints && (
+                      <div className="rounded-md border border-white/[0.06] bg-[#080c14] px-3 py-2">
+                        <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-ash">
+                          Constraints
+                        </p>
+                        <p className="whitespace-pre-wrap text-[10px] leading-5 text-mist">
+                          {currentProblem.constraints}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CODE EDITOR */}
+                <div className="overflow-hidden rounded-lg border border-white/[0.08] bg-[#0a0f1a] shadow-2xl mb-4">
+                  <div className="flex items-center justify-between border-b border-white/[0.07] bg-[#101828] px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-[#f45d5d]" />
+                      <span className="h-2 w-2 rounded-full bg-[#f2c94c]" />
+                      <span className="h-2 w-2 rounded-full bg-[#45d483]" />
+                      <span className="ml-2 text-[10px] text-ash">
+                        solution.{language === 'python' ? 'py' : language === 'cpp' ? 'cpp' : language === 'c' ? 'c' : 'java'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={language}
+                        onChange={(event) =>
+                          handleLanguageChange(event.target.value)
+                        }
+                        disabled={executing}
+                        className="rounded-md border border-white/[0.08] bg-[#080d16] px-2.5 py-1.5 text-[10px] text-mist outline-none"
+                      >
+                        <option value="python">Python</option>
+                        <option value="c">C</option>
+                        <option value="cpp">C++</option>
+                        <option value="java">Java</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={runCode}
+                        disabled={executing || !code.trim() || !currentProblem}
+                        className="rounded-md bg-white px-4 py-1.5 text-[11px] font-semibold text-[#080b13] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-slate disabled:text-ash"
+                      >
+                        {executing ? 'Running...' : '▶ Run'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    disabled={executing}
+                    spellCheck={false}
+                    rows={10}
+                    className="block w-full resize-y bg-[#070b12] px-4 py-4 font-mono text-[12px] leading-6 text-[#d8def0] outline-none"
+                    placeholder={`Write your ${language === 'python' ? 'Python' : language === 'cpp' ? 'C++' : language === 'c' ? 'C' : 'Java'} solution here...`}
+                  />
+
+                  {/* EXECUTION RESULT */}
+                  {executionResult && (
+                    <div className="border-t border-white/[0.07]">
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ash">
+                          Execution Result
+                        </p>
+                        <span
+                          className={
+                            executionResult.success
+                              ? 'text-[10px] font-medium text-green-400'
+                              : executionResult.timed_out
+                                ? 'text-[10px] font-medium text-yellow-400'
+                                : 'text-[10px] font-medium text-red-400'
+                          }
+                        >
+                          {executionResult.success
+                            ? '● Accepted'
+                            : executionResult.timed_out
+                              ? '● Time Limit'
+                              : '● Runtime Error'}
+                        </span>
+                      </div>
+
+                      {executionResult.stdout && (
+                        <div className="border-t border-white/[0.06] p-3">
+                          <p className="mb-1.5 text-[9px] uppercase tracking-[0.14em] text-ash">
+                            Output
+                          </p>
+                          <pre className="max-h-36 overflow-auto whitespace-pre-wrap rounded-md bg-[#060910] p-3 font-mono text-[11px] leading-5 text-green-300">
+                            {executionResult.stdout}
+                          </pre>
+                        </div>
+                      )}
+
+                      {executionResult.stderr && (
+                        <div className="border-t border-white/[0.06] p-3">
+                          <p className="mb-1.5 text-[9px] uppercase tracking-[0.14em] text-ash">
+                            Error
+                          </p>
+                          <pre className="max-h-36 overflow-auto whitespace-pre-wrap rounded-md bg-[#060910] p-3 font-mono text-[11px] leading-5 text-red-300">
+                            {executionResult.stderr}
+                          </pre>
+                        </div>
+                      )}
+
+                      {!executionResult.stdout && !executionResult.stderr && (
+                        <div className="border-t border-white/[0.06] p-3">
+                          <p className="text-[11px] text-ash">No output produced.</p>
+                        </div>
+                      )}
+
+                      {testSuiteResult ? (
+                        <div className="border-t border-white/[0.06] px-3 py-2.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-semibold text-mist">
+                              Test Cases
+                            </p>
+                            <span
+                              className={
+                                testSuiteResult.passed === testSuiteResult.total
+                                  ? 'text-[9px] font-semibold text-green-400'
+                                  : 'text-[9px] font-semibold text-red-400'
+                              }
+                            >
+                              {testSuiteResult.passed}/{testSuiteResult.total} passed
+                            </span>
                           </div>
 
+                          <div className="mt-2 space-y-1.5">
+                            {testSuiteResult.test_cases.map((testCase, index) => (
+                              <div
+                                key={index}
+                                className={`rounded-md border px-3 py-2 ${
+                                  testCase.passed
+                                    ? 'border-green-400/10 bg-green-400/[0.03]'
+                                    : testCase.timed_out
+                                      ? 'border-yellow-400/10 bg-yellow-400/[0.03]'
+                                      : 'border-red-400/10 bg-red-400/[0.03]'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-[9px] text-ash">
+                                    Case {index + 1}
+                                  </span>
+                                  <span
+                                    className={
+                                      testCase.passed
+                                        ? 'text-[9px] font-medium text-green-400'
+                                        : testCase.timed_out
+                                          ? 'text-[9px] font-medium text-yellow-400'
+                                          : 'text-[9px] font-medium text-red-400'
+                                    }
+                                  >
+                                    {testCase.passed
+                                      ? '✓ Passed'
+                                      : testCase.timed_out
+                                        ? '◷ Timeout'
+                                        : '✕ Failed'}
+                                  </span>
+                                </div>
+
+                                {!testCase.passed && (
+                                  <div className="mt-2 space-y-1 text-[9px]">
+                                    <p className="text-ash">
+                                      Expected:{' '}
+                                      <span className="font-mono text-green-300">
+                                        {testCase.expected_output}
+                                      </span>
+                                    </p>
+                                    <p className="text-ash">
+                                      Actual:{' '}
+                                      <span className="font-mono text-red-300">
+                                        {testCase.actual_output || 'No output'}
+                                      </span>
+                                    </p>
+                                    {testCase.error && (
+                                      <p className="mt-1 whitespace-pre-wrap text-red-300">
+                                        {testCase.error}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border-t border-white/[0.06] px-3 py-2.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-semibold text-mist">
+                              Test Cases
+                            </p>
+                            <span className="text-[9px] text-ash">
+                              No test cases
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between border-t border-white/[0.06] px-3 py-2.5">
+                        <p className="text-[10px] text-ash">Stuck? Ask your mentor!</p>
+                        <button
+                          type="button"
+                          onClick={askMentorAboutCode}
+                          disabled={loading}
+                          className="rounded-md border border-[#5269aa]/30 bg-[#5269aa]/10 px-3 py-1.5 text-[10px] font-semibold text-[#b9c9ff] transition hover:bg-[#5269aa]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {loading ? 'Analyzing...' : '🤖 Ask Mentor'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[9px] text-ash/50">
+                  Run code before asking the mentor for execution feedback.
+                </p>
+              </div>
+            </section>
+
+            {/* RIGHT SIDEBAR: AI MENTOR */}
+            <aside className="hidden xl:flex xl:flex-col min-h-[calc(100vh-56px)] bg-[#090d16] border-l border-white/[0.06]">
+              {/* MENTOR HEADER */}
+              <div className="border-b border-white/[0.06] px-4 py-3 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={DSA_MENTOR_LOGO}
+                      alt="AI Mentor"
+                      className="h-8 w-8 rounded-full object-contain"
+                    />
+                    <div>
+                      <p className="text-xs font-semibold">AI Mentor</p>
+                      <p className="text-[9px] text-ash">Guided learning</p>
+                    </div>
+                  </div>
+                  <span className="flex items-center gap-1 text-[9px] text-green-400/80">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                    Online
+                  </span>
+                </div>
+              </div>
+
+              {/* CHAT AREA */}
+              <div className="flex-1 overflow-y-auto px-3 py-4">
+                {messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-start min-h-full">
+                    <div className="text-center">
+                      <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.03] text-sm">
+                        ◈
+                      </div>
+                      <p className="text-sm font-semibold">Let's solve together.</p>
+                      <p className="mx-auto mt-2 max-w-[260px] text-[10px] leading-5 text-ash/70">
+                        I'll guide your thinking, review your code and explain
+                        execution errors without immediately giving away the answer.
+                      </p>
+
+                      {/* QUICK ACTIONS */}
+                      <div className="mt-6">
+                        <p className="mb-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-ash/60">
+                          Quick actions
+                        </p>
+                        <QuickActionButton
+                          emoji="💡"
+                          label="Give me a hint"
+                          onClick={() => sendMessage('Give me a hint')}
+                          disabled={loading}
+                        />
+                        <QuickActionButton
+                          emoji="🧭"
+                          label="Guide me"
+                          onClick={() => sendMessage('What should I think about first?')}
+                          disabled={loading}
+                        />
+                        <QuickActionButton
+                          emoji="📊"
+                          label="Review approach"
+                          onClick={() => sendMessage('Explain the optimal approach')}
+                          disabled={loading}
+                        />
+                        <QuickActionButton
+                          emoji="⚠️"
+                          label="Explain error"
+                          onClick={() => sendMessage('Why is my solution wrong?')}
+                          disabled={loading}
+                        />
+                        <QuickActionButton
+                          emoji="⏱️"
+                          label="Complexity"
+                          onClick={() => sendMessage('What is the time and space complexity?')}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((message, index) => (
+                      <div
+                        key={index}
+                        className={message.role === 'student' ? 'flex justify-end' : 'flex items-start gap-2'}
+                      >
+                        {message.role === 'assistant' && (
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#5269aa]/30 bg-[#5269aa]/10 text-[9px] text-[#b9c9ff]">
+                            ◈
+                          </div>
                         )}
 
-
                         <div
-                          className={`max-w-[78%] whitespace-pre-wrap rounded-md px-4 py-3 text-sm leading-6 ${
-                            message.role ===
-                            'student'
-                              ? 'bg-signal-blue text-white'
-                              : 'border border-inkline bg-deep-sea text-mist'
+                          className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2.5 text-[11px] leading-5 ${
+                            message.role === 'student'
+                              ? 'bg-[#3157c8] text-white'
+                              : 'border border-white/[0.07] bg-[#0f1419] text-[#d6dced]'
                           }`}
                         >
                           {message.content}
                         </div>
-
-
-                        {message.role ===
-                          'student' && (
-
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-inkline bg-deep-sea text-[10px] text-ash">
-                            You
-                          </div>
-
-                        )}
-
                       </div>
+                    ))}
 
-                    )
-                  )}
-
-
-                  {loading && (
-
-                    <div className="flex gap-3">
-
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-sapphire-hairline bg-cobalt-panel text-sm text-frosted-lilac">
-                        ◈
+                    {loading && (
+                      <div className="flex items-start gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#5269aa]/30 bg-[#5269aa]/10 text-[9px] text-[#b9c9ff]">
+                          ◈
+                        </div>
+                        <div className="flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-[#0f1419] px-3 py-3">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#5269aa] animate-pulse" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#5269aa] animate-pulse" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#5269aa] animate-pulse" />
+                        </div>
                       </div>
-
-                      <div className="flex items-center gap-1.5 rounded-md border border-inkline bg-deep-sea px-5 py-4">
-
-                        <span className="loading-dot" />
-
-                        <span className="loading-dot" />
-
-                        <span className="loading-dot" />
-
-                      </div>
-
-                    </div>
-
-                  )}
-
-                </div>
-
-              )}
-
-            </div>
-
-          </div>
-
-
-          {/* =================================================
-              INPUT
-          ================================================= */}
-
-          <div className="relative border-t border-inkline bg-abyss/95 px-5 py-5 backdrop-blur-xl lg:px-8">
-
-            <div className="mx-auto max-w-5xl">
-
-
-              {selectedFile && (
-
-                <div className="mb-3 flex">
-
-                  <div className="flex items-center gap-3 rounded-sm border border-inkline bg-deep-sea px-3 py-2">
-
-                    {selectedFile.previewUrl ? (
-
-                      <img
-                        src={
-                          selectedFile.previewUrl
-                        }
-                        alt="Selected"
-                        className="h-10 w-10 rounded-sm object-cover"
-                      />
-
-                    ) : (
-
-                      <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-red-500/10 text-[10px] text-red-400">
-                        PDF
-                      </div>
-
                     )}
 
-
-                    <div className="max-w-[220px]">
-
-                      <p className="truncate text-xs text-mist">
-                        {
-                          selectedFile.file.name
-                        }
-                      </p>
-
-                      <p className="mt-0.5 text-[10px] text-ash">
-                        {(
-                          selectedFile.file.size /
-                          1024
-                        ).toFixed(0)} KB
-                      </p>
-
-                    </div>
-
-
-                    <button
-                      onClick={
-                        removeFile
-                      }
-                      className="ml-2 text-ash hover:text-quartz"
-                    >
-                      ×
-                    </button>
-
+                    <div ref={messagesEndRef} />
                   </div>
+                )}
+              </div>
 
+              {/* CHAT INPUT */}
+              <div className="border-t border-white/[0.06] bg-[#0b101a] p-3 shrink-0">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[9px] text-ash/50">AI coaching mode</span>
+                  <span className="text-[9px] text-green-400/70">No direct solution unless requested</span>
                 </div>
+                <div className="rounded-lg border border-white/[0.08] bg-[#080d16]">
+                  <textarea
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={loading}
+                    rows={3}
+                    placeholder="Ask your mentor..."
+                    className="w-full resize-none bg-transparent px-3 py-3 text-[11px] leading-5 text-mist outline-none placeholder:text-ash/50"
+                  />
 
-              )}
-
-
-              <div className="rounded-md border border-inkline bg-deep-sea shadow-md">
-
-                <textarea
-                  value={input}
-                  onChange={(event) =>
-                    setInput(
-                      event.target.value
-                    )
-                  }
-                  onKeyDown={
-                    handleKeyDown
-                  }
-                  disabled={loading}
-                  rows={2}
-                  placeholder="Ask your DSA question..."
-                  className="w-full resize-none bg-transparent px-4 pt-4 text-sm text-mist outline-none"
-                />
-
-
-                <div className="flex items-center justify-between px-3 pb-3">
-
-
-                  <div className="flex items-center gap-1">
-
-                    <input
-                      ref={
-                        fileInputRef
-                      }
-                      type="file"
-                      hidden
-                      accept=".pdf,.png,.jpg,.jpeg,.webp"
-                      onChange={
-                        handleFileSelect
-                      }
-                    />
-
-
+                  <div className="flex items-center justify-between border-t border-white/[0.06] px-2 py-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        fileInputRef.current?.click()
-                      }
-                      title="Upload PDF or Image"
-                      className="flex h-9 w-9 items-center justify-center rounded-sm text-ash transition hover:bg-cobalt-panel hover:text-quartz"
-                    >
-                      📎
-                    </button>
-
-
-                    <button
-                      type="button"
-                      className="rounded-full px-3 py-2 text-xs text-ash transition hover:bg-cobalt-panel hover:text-quartz"
+                      onClick={handleHint}
+                      disabled={loading}
+                      className="rounded-md px-2.5 py-1.5 text-[10px] text-ash transition hover:bg-[#5269aa]/10 hover:text-[#cbd5ff] disabled:opacity-50"
                     >
                       💡 Hint
                     </button>
 
+                    <button
+                      type="button"
+                      onClick={() => sendMessage()}
+                      disabled={loading || !input.trim()}
+                      className="rounded-md bg-white px-3 py-1.5 text-[10px] font-semibold text-[#080b13] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-slate disabled:text-ash"
+                    >
+                      {loading ? 'Thinking...' : 'Send →'}
+                    </button>
                   </div>
-
-
-                  <button
-                    onClick={
-                      sendMessage
-                    }
-                    disabled={
-                      loading ||
-                      !input.trim()
-                    }
-                    className="rounded-full bg-quartz px-5 py-2 text-sm font-semibold text-void shadow-inner-glow transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate disabled:text-ash"
-                  >
-
-                    {loading
-                      ? 'Thinking...'
-                      : 'Send →'}
-
-                  </button>
-
                 </div>
 
-              </div>
-
-
-              <div className="mt-2 flex justify-between px-1">
-
-                <p className="text-[10px] text-ash">
+                <p className="mt-1.5 text-[8px] text-ash/50">
                   Enter to send · Shift + Enter for new line
                 </p>
-
-
-                {sessionId && (
-
-                  <p className="text-[10px] text-green-400/70">
-                    ● Session active
-                  </p>
-
-                )}
-
               </div>
-
-            </div>
-
+            </aside>
           </div>
-
         </main>
-
       </div>
-
     </div>
   )
 }
 
-
 /* =========================================================
-   APP
+   APP ROOT
 ========================================================= */
 
 function App() {
-
   return (
-
     <BrowserRouter>
-
       <Routes>
-
-        <Route
-          path="/login"
-          element={
-            <LoginPage />
-          }
-        />
-
-        <Route
-          path="/dashboard"
-          element={
-            <DashboardPage />
-          }
-        />
-
-        <Route
-          path="/"
-          element={
-            <Navigate
-              to="/login"
-              replace
-            />
-          }
-        />
-
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to="/login"
-              replace
-            />
-          }
-        />
-
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-
     </BrowserRouter>
-
   )
 }
 

@@ -2,6 +2,25 @@ import apiClient from './api'
 
 
 // =====================================================
+// EXECUTION FEEDBACK
+// =====================================================
+
+export interface ExecutionFeedback {
+  passed: number
+  total: number
+
+  test_cases: {
+    passed: boolean
+    input: string
+    expected_output: string
+    actual_output: string
+    error?: string
+    timed_out?: boolean
+  }[]
+}
+
+
+// =====================================================
 // CHAT
 // =====================================================
 
@@ -12,6 +31,18 @@ export interface ChatRequest {
   request_type?: string
   hint_level?: number
   session_id?: string
+
+  // Problem context
+  problem_title?: string
+  problem_description?: string
+  problem_constraints?: string
+  problem_examples?: string[]
+
+  // Student code
+  student_code?: string
+
+  // Latest execution result
+  execution_feedback?: ExecutionFeedback
 }
 
 
@@ -31,6 +62,18 @@ export interface HintRequest {
   hint_level?: number
   session_id?: string
   difficulty?: string
+
+  // Problem context
+  problem_title?: string
+  problem_description?: string
+  problem_constraints?: string
+  problem_examples?: string[]
+
+  // Student code
+  student_code?: string
+
+  // Latest execution result
+  execution_feedback?: ExecutionFeedback
 }
 
 
@@ -77,7 +120,8 @@ export const tutorService = {
       await apiClient.post(
         '/chat',
         {
-          message: data.message,
+          message:
+            data.message,
 
           difficulty:
             data.difficulty ??
@@ -97,6 +141,27 @@ export const tutorService = {
 
           session_id:
             data.session_id,
+
+          // Problem context
+          problem_title:
+            data.problem_title,
+
+          problem_description:
+            data.problem_description,
+
+          problem_constraints:
+            data.problem_constraints,
+
+          problem_examples:
+            data.problem_examples,
+
+          // Student code
+          student_code:
+            data.student_code,
+
+          // Execution feedback
+          execution_feedback:
+            data.execution_feedback,
         }
       )
 
@@ -116,7 +181,8 @@ export const tutorService = {
       await apiClient.post(
         '/chat',
         {
-          message: data.message,
+          message:
+            data.message,
 
           difficulty:
             data.difficulty ??
@@ -135,6 +201,27 @@ export const tutorService = {
 
           session_id:
             data.session_id,
+
+          // Problem context
+          problem_title:
+            data.problem_title,
+
+          problem_description:
+            data.problem_description,
+
+          problem_constraints:
+            data.problem_constraints,
+
+          problem_examples:
+            data.problem_examples,
+
+          // Student code
+          student_code:
+            data.student_code,
+
+          // Execution feedback
+          execution_feedback:
+            data.execution_feedback,
         }
       )
 

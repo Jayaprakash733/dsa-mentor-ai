@@ -53,6 +53,7 @@ class RAGPipeline:
         problem: str = "",
         conversation_history: str = "",
         phase: str = "understanding",
+        topic: str = "",
     ) -> str:
         """
         Retrieve relevant context and generate
@@ -60,10 +61,13 @@ class RAGPipeline:
         """
 
         # ---------------------------------------------
-        # 1. Use actual problem for RAG retrieval
+        # 1. Build topic-aware RAG retrieval query
         # ---------------------------------------------
 
         retrieval_query = f"""
+Topic:
+{topic}
+
 Problem:
 {problem}
 
@@ -110,6 +114,9 @@ Current student message:
         # ---------------------------------------------
 
         full_query = f"""
+Current Topic:
+{topic}
+
 Current Problem:
 {problem}
 
@@ -130,6 +137,7 @@ what the student already knows and where they
 are currently stuck.
 
 Stay within the current conversation phase.
+Stay relevant to the selected DSA topic.
 """
 
         # ---------------------------------------------
@@ -159,10 +167,13 @@ Stay within the current conversation phase.
         """
 
         # ---------------------------------------------
-        # 1. Use actual problem for hint retrieval
+        # 1. Topic-aware hint retrieval
         # ---------------------------------------------
 
         retrieval_query = f"""
+Topic:
+{topic}
+
 Problem:
 {problem}
 
@@ -205,6 +216,9 @@ Current student message:
         # ---------------------------------------------
 
         full_context = f"""
+Topic:
+{topic}
+
 Problem:
 {problem}
 

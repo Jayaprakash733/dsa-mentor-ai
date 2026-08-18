@@ -1,0 +1,29 @@
+[
+  {
+    "title": "Two Sum",
+    "topic": "Arrays",
+    "difficulty": "Easy",
+    "description": "Given an array of integers and a target value, find two indices whose values add up to the target.",
+    "approach": "Use a hash map to store previously seen values and their indices. For each number, check whether target minus the current number already exists.",
+    "time_complexity": "O(n)",
+    "space_complexity": "O(n)"
+  },
+  {
+    "title": "Binary Search",
+    "topic": "Binary Search",
+    "difficulty": "Easy",
+    "description": "Given a sorted array and a target value, find the index of the target.",
+    "approach": "Use low and high pointers. Check the middle element and eliminate half of the search space after each comparison.",
+    "time_complexity": "O(log n)",
+    "space_complexity": "O(1)"
+  },
+  {
+    "title": "Reverse Linked List",
+    "topic": "Linked List",
+    "difficulty": "Easy",
+    "description": "Reverse a singly linked list and return the new head.",
+    "approach": "Maintain previous and current pointers and reverse each next pointer while traversing the list.",
+    "time_complexity": "O(n)",
+    "space_complexity": "O(1)"
+  }
+]

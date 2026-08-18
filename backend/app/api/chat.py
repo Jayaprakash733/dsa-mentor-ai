@@ -449,12 +449,14 @@ def chat(
         else:
 
             response = (
-                rag_pipeline.ask(
+                rag_pipeline.ask(   
                     query=request.message,
                     difficulty=request.difficulty,
                     k=3,
                     problem=problem,
                     conversation_history=conversation_history,
+                    phase=phase.value,
+                    topic=request.topic,
                 )
             )
 

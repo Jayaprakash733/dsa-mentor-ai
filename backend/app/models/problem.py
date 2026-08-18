@@ -40,6 +40,41 @@ class Problem(Base):
         nullable=False,
     )
 
+    approach: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    time_complexity: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
+    space_complexity: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
+    source: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    source_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    solution_code: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    programming_language: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
