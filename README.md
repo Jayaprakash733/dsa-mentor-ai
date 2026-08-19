@@ -1,6 +1,3 @@
-Haan bro. **Pehle README final karte hain.** Tumhare current project ke hisaab se ye README use karo. Isko directly project root ke `README.md` mein replace kar sakte ho.
-
-````markdown
 # 🧠 DSA Mentor AI
 
 > An AI-powered DSA learning and coding assistant that helps students understand problems, write code, execute solutions, and improve through personalized AI feedback.
