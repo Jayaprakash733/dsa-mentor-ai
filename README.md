@@ -1,534 +1,794 @@
-# DSA Mentor AI 🤖📚
-
-> An AI-powered learning platform that teaches Data Structures and Algorithms through personalized guidance, intelligent tutoring, and adaptive learning.
-
-[![Python 3.11](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/downloads/)
-[![React 18](https://img.shields.io/badge/React-18+-blue)](https://reactjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-blue)](https://www.postgresql.org/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-
-## 🎯 Project Overview
-
-DSA Mentor AI is a comprehensive learning platform that revolutionizes how students learn Data Structures and Algorithms. Unlike traditional platforms like LeetCode that only judge solutions, DSA Mentor AI actively teaches through:
-
-- **AI DSA Tutor**: Interactive chatbot that explains concepts, provides hints, and guides problem-solving
-- **RAG Pipeline**: Intelligent retrieval system for accessing comprehensive DSA knowledge
-- **Adaptive Learning**: Personalized recommendations based on performance metrics
-- **Human-in-the-Loop**: Progressive hint system that encourages learning, not just copying
-- **Code Review**: AI-powered analysis and improvement suggestions
-- **Gamification**: XP, badges, streaks, and leaderboards
-- **Progress Analytics**: Comprehensive insights and interview readiness prediction
-
-## 🌟 Key Features
-
-### 1. **User Management**
-- Secure registration and authentication (JWT)
-- User profiles with experience levels
-- Preference management for languages and learning style
-
-### 2. **Problem Library**
-- 1000+ DSA problems (Easy, Medium, Hard)
-- Company-specific filters (Google, Amazon, Meta, etc.)
-- Tags and topic classification
-- Video explanations and editorials
-
-### 3. **AI Tutor** 🤖
-- Natural language interaction
-- Step-by-step explanations
-- Progressive hint system (6 levels)
-- Complexity analysis
-- Code review and suggestions
-
-### 4. **Learning Path** 📖
-- Personalized roadmaps
-- Beginner → Advanced progression
-- Company-specific tracks (Amazon, Google, etc.)
-- Topic recommendations
-
-### 5. **RAG Knowledge Base**
-- Upload custom learning materials (PDFs, notes)
-- Semantic search across documents
-- Automatic indexing and chunking
-- Vector database integration
-
-### 6. **Code Editor** 💻
-- Monaco Editor with syntax highlighting
-- Multi-language support (Python, Java, C++, JS, C)
-- Real-time testing
-- Solution comparison
-
-### 7. **Analytics Dashboard** 📊
-- Problems solved by difficulty
-- Topic-wise accuracy
-- Daily/weekly progress charts
-- Interview readiness score
-- Global ranking
-
-### 8. **Gamification** 🎮
-- XP points for each solved problem
-- Badges and achievements
-- Daily challenges
-- Leaderboard
-- Streak tracking
-
-### 9. **Quiz & Flashcards** ✨
-- Auto-generated quizzes
-- Spaced repetition for flashcards
-- MCQs, coding questions, fill-in-the-blanks
-- Difficulty levels
-
-### 10. **Interview Mode** 🎤
-- Mock interview sessions
-- Timed coding challenges
-- AI evaluation and feedback
-- Score reports
-
-## 🛠️ Technology Stack
-
-### Frontend
-- **React 18** + TypeScript for type safety
-- **Vite** for fast development
-- **TailwindCSS** for styling
-- **Monaco Editor** for code editing
-- **React Query** for server state
-- **Zustand** for client state
-- **Framer Motion** for animations
-- **Recharts** for analytics
-
-### Backend
-- **FastAPI** for async REST APIs
-- **Python 3.11** with async/await
-- **SQLAlchemy** ORM for database operations
-- **Pydantic** for data validation
-- **JWT** for authentication
-
-### Database
-- **PostgreSQL** (Neon) for relational data
-- **Redis** for caching and sessions
-- **ChromaDB/FAISS** for vector embeddings
-
-### AI/ML
-- **Google Gemini API** or **Groq API** for LLM
-- **BAAI/bge-small-en-v1.5** for embeddings
-- **Sentence Transformers** for embeddings
-- **LangChain** for RAG pipeline
-
-### Deployment
-- **Docker** for containerization
-- **GitHub Actions** for CI/CD
-- **Render** or **Railway** for backend
-- **Vercel** for frontend
-- **Neon** for PostgreSQL
-- **Upstash** for Redis
-
-## 📋 Requirements
-
-### System Requirements
-- Python 3.11+
-- Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL 16+
-- Redis 7+
-
-### API Keys Needed
-- Google Gemini API (free tier available)
-- Groq API (free tier available)
-- Cloudinary (for file uploads)
-- AWS S3 (optional, for large files)
-
-## 🚀 Quick Start
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/yourusername/dsa-mentor-ai.git
-cd dsa-mentor-ai
-```
-
-### 2. Setup Environment
-```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit configuration
-nano .env
-
-# Required values:
-# - GEMINI_API_KEY or GROQ_API_KEY
-# - SECRET_KEY (generate with: python -c "import secrets; print(secrets.token_urlsafe(32))")
-# - DATABASE_URL (from Neon)
-```
-
-### 3. Start with Docker Compose
-```bash
-# Build images
-docker-compose build
-
-# Start services
-docker-compose up -d
-
-# Run migrations
-docker-compose exec backend alembic upgrade head
-
-# Seed sample data (optional)
-docker-compose exec backend python -m app.seed_data
-```
-
-### 4. Access Application
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **Database**: localhost:5432
-- **Redis**: localhost:6379
-
-## 📁 Project Structure
-
-```
-dsa-mentor-ai/
-├── frontend/                    # React TypeScript Application
-│   ├── src/
-│   │   ├── components/         # Reusable UI components
-│   │   ├── pages/              # Page components
-│   │   ├── hooks/              # Custom React hooks
-│   │   ├── services/           # API client
-│   │   ├── store/              # Zustand stores
-│   │   └── types/              # TypeScript interfaces
-│   ├── Dockerfile
-│   └── package.json
-│
-├── backend/                     # FastAPI Application
-│   ├── app/
-│   │   ├── api/                # API endpoints
-│   │   ├── models/             # SQLAlchemy models
-│   │   ├── schemas/            # Pydantic schemas
-│   │   ├── services/           # Business logic
-│   │   ├── repositories/       # Data access layer
-│   │   ├── ai/                 # AI/ML integration
-│   │   ├── core/               # Core utilities
-│   │   └── main.py             # Entry point
-│   ├── tests/
-│   ├── migrations/             # Alembic migrations
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── docs/                        # Documentation
-│   ├── API.md
-│   ├── ARCHITECTURE.md
-│   ├── DATABASE.md
-│   └── DEPLOYMENT.md
-│
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
-
-## 🔧 Development Setup
-
-### Backend Development
-```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run migrations
-alembic upgrade head
-
-# Start dev server
-uvicorn app.main:app --reload
-
-# Run tests
-pytest
-
-# Code quality
-black .
-flake8 .
-mypy .
-```
-
-### Frontend Development
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-
-# Build for production
-npm run build
-
-# Run tests
-npm run test
-
-# Linting
-npm run lint
-```
-
-## 📚 API Documentation
-
-See [API_DOCUMENTATION.md](./docs/API.md) for detailed API reference.
-
-### Quick API Examples
-
-**Register User**
-```bash
-curl -X POST http://localhost:8000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "username": "username",
-    "password": "secure_password",
-    "full_name": "John Doe"
-  }'
-```
-
-**Login**
-```bash
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "secure_password"
-  }'
-```
-
-**Get Problems**
-```bash
-curl -X GET "http://localhost:8000/api/v1/problems?difficulty=Medium&topic=Arrays" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Submit Code**
-```bash
-curl -X POST http://localhost:8000/api/v1/submissions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -d '{
-    "problem_id": "550e8400-e29b-41d4-a716-446655440001",
-    "code": "def twoSum(nums, target):\n    ...",
-    "language": "Python"
-  }'
-```
-
-## 🐳 Docker Commands
-
-```bash
-# Start all services
-docker-compose up -d
-
-# Stop services
-docker-compose down
-
-# View logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-
-# Execute command in container
-docker-compose exec backend bash
-docker-compose exec frontend bash
-
-# Remove volumes and data
-docker-compose down -v
-
-# Rebuild images
-docker-compose build --no-cache
-```
-
-## 🔐 Security
-
-- **JWT Authentication** with refresh tokens
-- **Password Hashing** using bcrypt
-- **SQL Injection Prevention** via SQLAlchemy ORM
-- **CORS Configuration** for authorized domains
-- **Rate Limiting** on API endpoints
-- **Input Validation** with Pydantic
-- **Environment Variables** for secrets
-- **HTTPS** recommended in production
-
-## 🚢 Deployment
-
-### Production Deployment Checklist
-- [ ] Set up environment variables in production
-- [ ] Configure database backups
-- [ ] Enable HTTPS/SSL
-- [ ] Setup monitoring and logging
-- [ ] Configure CDN for static files
-- [ ] Setup email service
-- [ ] Create database indexes
-- [ ] Run load testing
-- [ ] Security audit
-
-### Deploy to Render (Backend)
-```bash
-# Push to GitHub
-git push origin main
-
-# Connect repository on Render dashboard
-# Configure environment variables
-# Deploy automatically on push
-```
-
-### Deploy to Vercel (Frontend)
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-
-# Setup automatic deployments on Git push
-```
-
-See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for detailed instructions.
-
-## 📊 Database Schema
-
-The application uses the following main tables:
-
-- **users** - User accounts and profiles
-- **problems** - DSA problems
-- **submissions** - Code submissions
-- **progress** - User progress tracking
-- **topic_accuracy** - Performance by topic
-- **conversations** - AI tutor chat history
-- **documents** - Knowledge base documents
-- **document_chunks** - Document chunks for RAG
-- **quizzes** - User quizzes
-- **flashcards** - Study flashcards
-- **learning_paths** - Personalized learning paths
-- **gamification** - XP, badges, streaks
-
-See [database_schema.sql](./database_schema.sql) for complete schema.
-
-## 🧪 Testing
-
-```bash
-# Backend tests
-cd backend
-pytest
-pytest app/tests/test_auth.py -v
-pytest --cov=app app/tests/
-
-# Frontend tests
-cd frontend
-npm run test
-npm run test -- --coverage
-```
-
-## 📝 API Examples
-
-### Chat with AI Tutor
-```bash
-curl -X POST http://localhost:8000/api/v1/tutor/chat \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer TOKEN" \
-  -d '{
-    "conversation_id": "conv_123",
-    "problem_id": "prob_456",
-    "message": "How do I solve this?",
-    "request_type": "chat"
-  }'
-```
-
-### Generate Quiz
-```bash
-curl -X POST http://localhost:8000/api/v1/quiz/generate \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer TOKEN" \
-  -d '{
-    "topic": "Arrays",
-    "difficulty": "Medium",
-    "question_count": 10,
-    "question_types": ["mcq", "coding"]
-  }'
-```
-
-### Search Knowledge Base
-```bash
-curl -X POST http://localhost:8000/api/v1/rag/search \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer TOKEN" \
-  -d '{
-    "query": "How to implement binary search?",
-    "search_type": "semantic",
-    "limit": 5
-  }'
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- FastAPI and SQLAlchemy communities
-- React ecosystem
-- Google Gemini API documentation
-- LeetCode for problem inspiration
-- All contributors and users
-
-## 📞 Support
-
-- **Email**: support@dsamenstorai.com
-- **Issues**: GitHub Issues
-- **Discussions**: GitHub Discussions
-- **Twitter**: @DSAMentorAI
-
-## 🎓 Learning Resources
-
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [React Documentation](https://react.dev/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
-- [Pydantic Documentation](https://docs.pydantic.dev/)
-
-## 🗺️ Roadmap
-
-### Phase 1 (Current)
-- ✅ Core authentication
-- ✅ Problem management
-- ✅ Basic AI tutor
-- ✅ Code submissions
-- ✅ RAG pipeline
-
-### Phase 2 (Planned)
-- 🔄 Mobile app (React Native)
-- 🔄 Video tutorials
-- 🔄 Live coding sessions
-- 🔄 Peer review system
-
-### Phase 3 (Future)
-- 📋 ML-based problem recommendations
-- 📋 Job interview simulator
-- 📋 Company-specific interview prep
-- 📋 Certification program
-- 📋 Multi-language support
-
-## 🔗 Links
-
-- [Live Demo](https://dsamensorai.vercel.app)
-- [GitHub Repository](https://github.com/yourusername/dsa-mentor-ai)
-- [Documentation](https://dsamensorai.gitbook.io/)
-- [Twitter](https://twitter.com/DSAMentorAI)
-- [LinkedIn](https://linkedin.com/company/dsamensorai)
+Haan bro. **Pehle README final karte hain.** Tumhare current project ke hisaab se ye README use karo. Isko directly project root ke `README.md` mein replace kar sakte ho.
+
+````markdown
+# 🧠 DSA Mentor AI
+
+> An AI-powered DSA learning and coding assistant that helps students understand problems, write code, execute solutions, and improve through personalized AI feedback.
+
+## 📌 Overview
+
+DSA Mentor AI is an intelligent learning platform designed to help students practice Data Structures and Algorithms through guided problem solving.
+
+Unlike traditional coding platforms that mainly provide a **Correct/Wrong** verdict, DSA Mentor AI focuses on the **learning process**.
+
+The system allows a student to:
+
+- Select or explore DSA problems
+- Ask conceptual questions
+- Get AI-powered explanations and hints
+- Write and submit code
+- Execute code against test cases
+- Analyze execution results
+- Receive personalized feedback
+- Improve and re-submit the solution
+
+The core learning loop is:
+
+```text
+Problem
+   ↓
+Student Attempt
+   ↓
+Code Execution
+   ↓
+Test Case Evaluation
+   ↓
+AI Feedback / Hint
+   ↓
+Student Improves Solution
+   ↓
+Re-submit
+````
 
 ---
 
-**Made with ❤️ for the learning community**
+# 🎯 Problem Statement
 
-**Last Updated**: January 2024  
-**Version**: 1.0.0
+Students often struggle with DSA because knowing the syntax is not enough.
+
+Traditional coding platforms usually provide:
+
+```text
+Submit Code
+     ↓
+Accepted / Wrong Answer
+```
+
+This tells the student **what happened**, but not always **why it happened or how to improve**.
+
+DSA Mentor AI addresses this problem by combining:
+
+* DSA knowledge retrieval
+* AI tutoring
+* Code execution
+* Test-case evaluation
+* Personalized feedback
+
+The objective is to make the system behave more like a **DSA mentor** rather than just a coding judge.
+
+---
+
+# 🚀 Key Features
+
+## 1. AI DSA Tutor
+
+Students can ask questions about:
+
+* Arrays
+* Linked Lists
+* Stacks
+* Queues
+* Trees
+* Graphs
+* Searching
+* Sorting
+* Dynamic Programming
+* Recursion
+* Strings
+* Other DSA concepts
+
+The AI provides explanations and guidance based on the problem context.
+
+---
+
+## 2. RAG-based Knowledge Retrieval
+
+The project uses a Retrieval-Augmented Generation (RAG) pipeline.
+
+```text
+Student Question
+       ↓
+Query Processing
+       ↓
+Embedding
+       ↓
+Vector Retrieval
+       ↓
+Relevant DSA Knowledge
+       ↓
+LLM
+       ↓
+Contextual Response
+```
+
+This allows the AI to use relevant DSA knowledge instead of relying only on the model's general knowledge.
+
+---
+
+## 3. Code Execution
+
+Students can submit their code for execution.
+
+The execution workflow is:
+
+```text
+Student Code
+     ↓
+Code Executor
+     ↓
+Test Case Runner
+     ↓
+Actual Output
+     ↓
+Expected Output
+     ↓
+Evaluation
+```
+
+The system captures execution results and uses them for further analysis.
+
+---
+
+## 4. Test Case Evaluation
+
+The submitted solution is tested against predefined test cases.
+
+The system compares:
+
+```text
+Expected Output
+       vs
+Actual Output
+```
+
+and determines whether the solution passes or fails.
+
+---
+
+## 5. AI Feedback Agent
+
+When a student's solution fails, the feedback workflow analyzes the execution result.
+
+Instead of only returning:
+
+```text
+Wrong Answer
+```
+
+the system can provide targeted guidance such as:
+
+```text
+Check how you update the left and right
+boundaries after calculating mid.
+```
+
+The objective is to help the student discover and fix the mistake.
+
+---
+
+## 6. Human-in-the-Loop Learning
+
+The student remains actively involved in solving the problem.
+
+```text
+AI gives problem
+       ↓
+Student writes solution
+       ↓
+System evaluates
+       ↓
+AI provides hint
+       ↓
+Student improves solution
+       ↓
+System evaluates again
+```
+
+The AI is designed to assist the learner instead of simply replacing the learner.
+
+---
+
+# 🏗️ System Architecture
+
+```text
+                         ┌──────────────┐
+                         │   Student    │
+                         └──────┬───────┘
+                                │
+                                ▼
+                    ┌─────────────────────┐
+                    │ React + TypeScript  │
+                    │     Frontend        │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │    FastAPI Backend  │
+                    └──────────┬──────────┘
+                               │
+                 ┌─────────────┴─────────────┐
+                 │                           │
+                 ▼                           ▼
+        ┌────────────────┐         ┌─────────────────┐
+        │  RAG Pipeline  │         │ Code Execution  │
+        └───────┬────────┘         └────────┬────────┘
+                │                           │
+                ▼                           ▼
+        ┌────────────────┐         ┌─────────────────┐
+        │ DSA Knowledge  │         │  Test Case      │
+        │     Base       │         │    Runner       │
+        └───────┬────────┘         └────────┬────────┘
+                │                           │
+                │                           ▼
+                │                  ┌─────────────────┐
+                │                  │ Result Analysis │
+                │                  └────────┬────────┘
+                │                           │
+                └─────────────┬─────────────┘
+                              ▼
+                    ┌─────────────────────┐
+                    │   Feedback Agent    │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ AI Tutor Response   │
+                    └─────────────────────┘
+```
+
+---
+
+# 🧩 Project Structure
+
+```text
+dsa-ai-chat/
+│
+├── backend/
+│   │
+│   ├── app/
+│   │   ├── ai/
+│   │   │   ├── execution/
+│   │   │   │   ├── code_executor.py
+│   │   │   │   ├── feedback_agent.py
+│   │   │   │   └── test_case_runner.py
+│   │   │   │
+│   │   │   ├── knowledge/
+│   │   │   │   ├── loaders/
+│   │   │   │   │   ├── problem_importer.py
+│   │   │   │   │   ├── problem_loader.py
+│   │   │   │   │   ├── problem_vector_loader.py
+│   │   │   │   │   └── repository_loader.py
+│   │   │   │   │
+│   │   │   │   └── sources/
+│   │   │   │       └── dsa_problems.json
+│   │   │   │
+│   │   │   ├── rag_pipeline/
+│   │   │   │   ├── langchain_rag.py
+│   │   │   │   └── prompt_templates.py
+│   │   │   │
+│   │   │   ├── document_processor.py
+│   │   │   ├── embedding_models.py
+│   │   │   ├── llm_client.py
+│   │   │   └── vector_store_manager.py
+│   │   │
+│   │   ├── api/
+│   │   │   ├── auth.py
+│   │   │   ├── chat.py
+│   │   │   ├── documents.py
+│   │   │   ├── execution.py
+│   │   │   ├── execution_feedback.py
+│   │   │   └── problems.py
+│   │   │
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── services/
+│   │   ├── data/
+│   │   ├── core/
+│   │   ├── database.py
+│   │   └── main.py
+│   │
+│   ├── migrations/
+│   ├── scripts/
+│   ├── docker/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+│
+├── frontend/
+│   └── src/
+│       ├── components/
+│       ├── hooks/
+│       ├── services/
+│       ├── store/
+│       ├── App.tsx
+│       └── main.tsx
+│
+├── datasets/
+│   └── CompetitiveProgrammingQuestionBank/
+│
+├── .gitignore
+└── README.md
+```
+
+---
+
+# 🛠️ Technology Stack
+
+## Frontend
+
+* React
+* TypeScript
+* Vite
+* CSS
+
+## Backend
+
+* Python
+* FastAPI
+* Pydantic
+* SQLAlchemy
+* Alembic
+
+## AI / ML
+
+* Large Language Model
+* LangChain components
+* Retrieval-Augmented Generation (RAG)
+* Embeddings
+* Vector similarity search
+
+## Code Execution
+
+* Python-based execution workflow
+* Test-case runner
+* Execution result analysis
+* AI feedback generation
+
+## Database
+
+* Relational database
+* SQLAlchemy ORM
+* Alembic migrations
+
+## DevOps
+
+* Docker
+* Docker Compose
+* Git
+* GitHub
+
+---
+
+# 🔄 AI Workflow
+
+## Conceptual Question
+
+```text
+User Question
+     ↓
+RAG Pipeline
+     ↓
+Query Embedding
+     ↓
+Vector Retrieval
+     ↓
+Relevant DSA Context
+     ↓
+Prompt Construction
+     ↓
+LLM
+     ↓
+Explanation / Hint
+```
+
+## Code Submission
+
+```text
+User Code
+     ↓
+Execution API
+     ↓
+Code Executor
+     ↓
+Test Case Runner
+     ↓
+Execution Result
+     ↓
+Feedback Agent
+     ↓
+Personalized Feedback
+```
+
+---
+
+# 🧠 Why RAG?
+
+A general LLM may provide a correct but generic response.
+
+RAG allows the system to retrieve relevant knowledge before generating the answer.
+
+For example:
+
+```text
+Question:
+"Why is binary search O(log n)?"
+
+       ↓
+
+Retrieve:
+Binary Search concept
+Time complexity
+Search space reduction
+
+       ↓
+
+LLM
+
+       ↓
+
+Context-aware explanation
+```
+
+This makes the tutor more relevant to the DSA learning domain.
+
+---
+
+# 🤖 Agent Design
+
+The project uses a modular AI workflow rather than depending on a single monolithic AI component.
+
+Major components include:
+
+```text
+RAG Component
+      ↓
+Knowledge Retrieval
+
+Code Execution Component
+      ↓
+Code + Test Case Evaluation
+
+Feedback Component
+      ↓
+Execution Result → AI Feedback
+```
+
+This modular design makes the system easier to test, maintain, and extend.
+
+> LangGraph/CrewAI are not currently required for the core workflow because the current execution and tutoring flow is controlled and modular. A graph-based orchestration layer can be considered as a future enhancement for more complex multi-agent workflows.
+
+---
+
+# 🐳 Containerization
+
+The backend can be containerized using Docker.
+
+Docker helps provide:
+
+* Reproducible environments
+* Consistent dependencies
+* Easier deployment
+* Separation of application services
+* Simplified development setup
+
+The project also includes Docker Compose configuration for running required services together.
+
+---
+
+# 🗃️ Database Migrations
+
+Alembic is used to manage database schema changes.
+
+Migration history includes changes related to:
+
+* Users
+* Problems
+* Problem solution metadata
+* Solution code metadata
+
+This allows database schema changes to remain version-controlled.
+
+---
+
+# 📡 API Modules
+
+The backend exposes APIs for different parts of the application.
+
+Main API modules include:
+
+```text
+/api/auth
+/api/chat
+/api/documents
+/api/execution
+/api/execution-feedback
+/api/problems
+```
+
+These APIs connect the React frontend with the backend services.
+
+---
+
+# 🔐 Security Considerations
+
+Code execution systems require careful isolation.
+
+The project uses containerization as part of the deployment architecture.
+
+For production deployment, additional execution sandboxing and resource restrictions should be applied, including:
+
+* CPU limits
+* Memory limits
+* Execution timeouts
+* Process isolation
+* Restricted filesystem access
+* Restricted network access
+
+---
+
+# 📊 Advantages
+
+### For Students
+
+* Interactive DSA learning
+* Personalized hints
+* Immediate code feedback
+* Concept-based explanations
+* Practice through repeated attempts
+
+### For Developers
+
+* Modular architecture
+* Separate AI components
+* API-based backend
+* Docker support
+* Database migrations
+* Extensible knowledge base
+
+---
+
+# 🔮 Future Enhancements
+
+Possible future improvements include:
+
+* Multi-agent orchestration using LangGraph
+* More programming language support
+* Advanced code sandboxing
+* Visual algorithm execution
+* Memory of individual student weaknesses
+* Difficulty adaptation
+* Learning progress analytics
+* Personalized DSA roadmap
+* More extensive test-case generation
+* Complexity analysis
+* Voice-based DSA tutoring
+
+---
+
+# 📈 Example Learning Flow
+
+```text
+Student:
+"Help me solve Binary Search"
+
+        ↓
+
+AI:
+Explains the concept
+
+        ↓
+
+Student:
+Writes code
+
+        ↓
+
+Code Executor:
+Runs test cases
+
+        ↓
+
+Test Case Runner:
+Finds failure
+
+        ↓
+
+Feedback Agent:
+Provides targeted hint
+
+        ↓
+
+Student:
+Fixes code
+
+        ↓
+
+Code Executor:
+Runs again
+
+        ↓
+
+Accepted
+```
+
+---
+
+# 🎯 Project Goal
+
+The goal of DSA Mentor AI is to transform DSA practice from:
+
+```text
+Problem → Code → Verdict
+```
+
+into:
+
+```text
+Problem
+   ↓
+Understand
+   ↓
+Attempt
+   ↓
+Execute
+   ↓
+Analyze
+   ↓
+Get Guidance
+   ↓
+Improve
+   ↓
+Solve
+```
+
+The system focuses on **learning through guided problem solving** rather than simply providing final solutions.
+
+---
+
+# 👨‍💻 Development
+
+### Clone the repository
+
+```bash
+git clone https://github.com/Jayaprakash733/dsa-mentor-ai.git
+cd dsa-mentor-ai
+```
+
+### Backend
+
+```bash
+cd backend
+
+python -m venv venv
+```
+
+Windows:
+
+```powershell
+venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run the backend:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+# 🐳 Docker
+
+Build and run the backend using Docker:
+
+```bash
+docker build -t dsa-mentor-ai-backend .
+```
+
+Or use Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+---
+
+# 🧪 Testing
+
+The project should be tested at multiple levels:
+
+```text
+Frontend
+   ↓
+API
+   ↓
+RAG
+   ↓
+Code Execution
+   ↓
+Test Cases
+   ↓
+Feedback
+```
+
+Important test scenarios include:
+
+* Valid DSA question
+* Invalid/ambiguous question
+* Correct code
+* Incorrect code
+* Failed test case
+* Runtime error
+* Timeout
+* Empty submission
+* Invalid input
+
+---
+
+# 📌 Project Status
+
+### Implemented
+
+* [x] React frontend
+* [x] FastAPI backend
+* [x] DSA knowledge base
+* [x] RAG pipeline
+* [x] Problem loaders
+* [x] Vector loading workflow
+* [x] Code execution
+* [x] Test-case runner
+* [x] AI feedback workflow
+* [x] Execution APIs
+* [x] Problem APIs
+* [x] Database models
+* [x] Alembic migrations
+* [x] Docker configuration
+* [x] Git/GitHub integration
+
+### Planned
+
+* [ ] Advanced multi-agent orchestration
+* [ ] Advanced sandbox isolation
+* [ ] Visual algorithm animation
+* [ ] Adaptive learning system
+* [ ] Advanced analytics
+
+---
+
+# 👥 Project Philosophy
+
+DSA Mentor AI follows one simple principle:
+
+> **Don't just tell the student the answer. Help the student understand why the answer works.**
+
+---
+
+## 📜 License
+
+This project is developed as an academic/project implementation.
+
+The project may include external datasets or repositories with their own licenses. Their original license and attribution requirements must be respected when redistributing or modifying those resources.
+
+```
